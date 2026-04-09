@@ -62,26 +62,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase TBD | Pending |
-| AUTH-02 | Phase TBD | Pending |
-| AUTH-03 | Phase TBD | Pending |
-| DEMD-01 | Phase TBD | Pending |
-| DEMD-02 | Phase TBD | Pending |
-| DEMD-03 | Phase TBD | Pending |
-| DISC-01 | Phase TBD | Pending |
-| DISC-02 | Phase TBD | Pending |
-| DISC-03 | Phase TBD | Pending |
-| TRST-01 | Phase TBD | Pending |
-| TRST-02 | Phase TBD | Pending |
-| TRST-03 | Phase TBD | Pending |
-| CONN-01 | Phase TBD | Pending |
-| CONN-02 | Phase TBD | Pending |
-| REVN-01 | Phase TBD | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| DEMD-01 | Phase 2 | Pending |
+| DEMD-02 | Phase 2 | Pending |
+| DEMD-03 | Phase 2 | Pending |
+| DISC-01 | Phase 3 | Pending |
+| DISC-02 | Phase 3 | Pending |
+| DISC-03 | Phase 3 | Pending |
+| TRST-01 | Phase 4 | Pending |
+| TRST-02 | Phase 4 | Pending |
+| TRST-03 | Phase 5 | Pending |
+| CONN-01 | Phase 5 | Pending |
+| CONN-02 | Phase 5 | Pending |
+| REVN-01 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠
+- Mapped to phases: 15
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-09*
