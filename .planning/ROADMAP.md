@@ -25,6 +25,14 @@
 
 **Requirements:** AUTH-01, AUTH-02, AUTH-03
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] `01-01-PLAN.md` — Monorepo (pnpm/turbo), shared role contracts, Expo SDK 55 + Clerk phone OTP, minimal Hono API + Vitest + CI (**AUTH-01**)
+- [ ] `01-02-PLAN.md` — SecureStore Clerk token cache, session runbook (D-04/D-02), settings + `POST /rpc/session/revoke-all` (**AUTH-02**, D-05)
+- [ ] `01-03-PLAN.md` — Supabase SQL migrations (`profiles` + RLS for Clerk `sub`), **[BLOCKING] `supabase db push`**, Firebase support doc (**AUTH-03**)
+- [ ] `01-04-PLAN.md` — Clerk `authorizedParties` middleware, Supabase user client, RPC identity + role tests, pino + `@hono/otel` (**AUTH-03**, D-10)
+
 **Success Criteria:**
 1. User can authenticate via OTP phone flow and access account.
 2. Session persists between app restarts and browser refresh where applicable.
