@@ -36,7 +36,7 @@ See: `.planning/PROJECT.md` (updated 2026-04-09)
 
 ## Next Command
 
-`/gsd-discuss-phase 1`
+`/gsd-execute-phase 1`
 
 ---
-*Last updated: 2026-04-09 after roadmap creation*
+*Last updated: 2026-04-10 after phase 1 planning complete*
