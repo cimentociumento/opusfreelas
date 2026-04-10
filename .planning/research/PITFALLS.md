@@ -1,6 +1,6 @@
 # Armadilhas do domínio — Marketplace local de serviços manuais e rurais (AMAUC)
 
-**Projeto:** AMAUC Freelas  
+**Projeto:** Opus Freelas  
 **Domínio:** Plataforma multiplataforma conectando contratantes a prestadores de serviços manuais/rurais na AMAUC (Alto Uruguai Catarinense), com foco inicial no fluxo do contratante, fechamento fora da plataforma no V1 e monetização por assinatura do prestador.  
 **Pesquisado:** 2026-04-09  
 **Confiança geral:** **MÉDIA** — síntese de padrões de marketplaces bilaterais, dinâmica de canais informais no Brasil e restrições explícitas em `.planning/PROJECT.md`. Não há validação empírica ainda com usuários AMAUC; itens marcados como **(validar no pilots)** exigem evidência local.

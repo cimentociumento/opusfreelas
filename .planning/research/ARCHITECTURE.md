@@ -8,7 +8,7 @@
 
 Para **confiabilidade**, **baixa sobrecarga operacional** e **escala futura**, a arquitetura recomendada é um **núcleo transacional coeso (modular monolith ou “modulith”)** com **fronteiras lógicas claras**, hospedado em **serviços gerenciados** (BD, filas, object storage, observabilidade). Microserviços completos no V1 elevam custo operacional sem ganho proporcional para um time pequeno e um recorte geográfico inicial. A evolução esperada é **extrair serviços só quando um módulo virar gargalo** (ex.: verificação de identidade, faturamento) — padrão conhecido como *strangler* / desacoplamento incremental.
 
-O produto AMAUC Freelas é **two-sided** com **fechamento fora da plataforma no V1** e **monetização por assinatura do prestador**: o backend não precisa mediar pagamento de serviço, mas precisa mediar **identidade**, **catálogo de demandas/ofertas**, **confiança** (verificação, avaliações) e **cobrança recorrente** de assinatura.
+O produto Opus Freelas é **two-sided** com **fechamento fora da plataforma no V1** e **monetização por assinatura do prestador**: o backend não precisa mediar pagamento de serviço, mas precisa mediar **identidade**, **catálogo de demandas/ofertas**, **confiança** (verificação, avaliações) e **cobrança recorrente** de assinatura.
 
 ## Recommended architecture
 

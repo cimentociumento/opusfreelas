@@ -1,4 +1,4 @@
-# Requirements: AMAUC Freelas
+# Requirements: Opus Freelas
 
 **Defined:** 2026-04-09
 **Core Value:** Permitir que contratantes da AMAUC encontrem e conectem-se rapidamente a prestadores locais confiaveis para servicos manuais e rurais.

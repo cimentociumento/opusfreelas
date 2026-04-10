@@ -1,6 +1,6 @@
 # Technology Stack
 
-**Project:** AMAUC Freelas  
+**Project:** Opus Freelas  
 **Domain:** Marketplace regional de serviços manuais e rurais (AMAUC/SC, Brasil)  
 **Researched:** 2026-04-09  
 **Overall confidence:** **MEDIUM–HIGH** (versões mobile/geo verificadas em documentação oficial; pagamentos BR exigem validação com PSP e contador jurídico no V1)

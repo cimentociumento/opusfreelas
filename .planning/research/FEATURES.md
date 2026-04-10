@@ -1,7 +1,7 @@
 # Panorama de funcionalidades
 
 **Dominio:** Marketplace local de servicos manuais e rurais (AMAUC / SC)  
-**Escopo:** Produto tipo AMAUC Freelas — V1 com foco no contratante, fechamento fora da plataforma, monetizacao por assinatura do prestador  
+**Escopo:** Produto tipo Opus Freelas — V1 com foco no contratante, fechamento fora da plataforma, monetizacao por assinatura do prestador  
 **Pesquisado em:** 2026-04-09  
 **Confianca geral:** MEDIA — padroes de mercado e literatura verificados por busca; recorte regional e decisões de produto consolidadas com **ALTA** confiança a partir de `.planning/PROJECT.md`.
 
@@ -46,7 +46,7 @@ Nao sao sempre “inventar de zero”; muitas vezes sao **execucao focada** no r
 
 Funcionalidades que **parecem** “marketplace completo” mas que, neste dominio e fase, aumentam risco juridico, friccao ou custo sem liquidez.
 
-| Anti-feature | Por que evitar no V1 (AMAUC Freelas) | O que fazer em vez disso |
+| Anti-feature | Por que evitar no V1 (Opus Freelas) | O que fazer em vez disso |
 |--------------|--------------------------------------|---------------------------|
 | Contratos digitais com validade juridica robusta | Complexidade juridica e operacional | Termos simples + conexao; evolucao em milestone posterior |
 | Negociacao/aceite formal completo in-app | Mesmo raciocinio; atrito para informal | Conversa fora + registro voluntdade de “fechei com X” opcional mais tarde |
