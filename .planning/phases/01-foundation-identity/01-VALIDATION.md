@@ -17,7 +17,7 @@ created: 2026-04-09
 
 | Property | Value |
 |----------|-------|
-| **Framework** | Vitest 4.x (install in Wave 0 — not yet in repo) |
+| **Framework** | Vitest 2.x (install in Wave 0 — not yet in repo; aligned with `01-01-PLAN.md`) |
 | **Config file** | `apps/api/vitest.config.ts` — **Wave 0** |
 | **Quick run command** | `pnpm vitest run` (from `apps/api` once scaffolded) |
 | **Full suite command** | `pnpm turbo run test` (once Turborepo exists) |

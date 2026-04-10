@@ -258,22 +258,15 @@ Verified patterns from official sources are embedded under **Architecture Patter
 
 **If this table were empty:** All claims would be verified — not the case while A1–A3 stand.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact Firebase scope for D-01**
-   - What we know: CONTEXT lists Firebase as “suporte” only.
-   - What’s unclear: Which products (FCM vs Analytics vs Remote Config) ship in phase 1.
-   - Recommendation: Planner adds a Wave-0 task to confirm; otherwise stub env keys and defer calls.
+Decisions below are **locked for planning** (2026-04-09) so downstream agents do not re-open them without an explicit roadmap change.
 
-2. **Direct Supabase from mobile vs API-only**
-   - What we know: Third-party Clerk integration supports client-side Supabase [CITED: Supabase docs].
-   - What’s unclear: Whether AMAUC Freelas hides all data behind Hono for V1.
-   - Recommendation: If API-only, still use Clerk JWT on Hono and **service-role** server pattern; RLS matters for any direct client path.
+1. **Exact Firebase scope for D-01** — **RESOLVED:** Phase 1 uses Firebase only for **ancillary** product setup (e.g. `expo.extra` placeholders for future **FCM**), **not** Firebase Auth or a second user directory. Analytics/Remote Config are optional and off by default until a later phase.
 
-3. **Clerk production plan vs D-04/D-05 in production**
-   - What we know: Custom session durations and some timeouts are **paid** in production [CITED: https://clerk.com/docs/guides/secure/session-options].
-   - What’s unclear: Budget/tier at launch.
-   - Recommendation: Verify before promising production SLOs; dev instance can still implement flows.
+2. **Direct Supabase from mobile vs API-only** — **RESOLVED:** **Hybrid V1:** sensitive **RPC** identity and role mutations go through **Hono** (`@clerk/backend` validation). The mobile app may use **Supabase client + Clerk JWT** for **RLS-protected reads** where the data model allows it (per Supabase third-party Clerk integration). **RLS remains mandatory** for any direct client path.
+
+3. **Clerk production plan vs D-04/D-05 in production** — **RESOLVED:** **Development** uses Clerk **free/dev** tier to implement flows. **Production** tier, SMS quotas, and custom session limits are **TBD** with finance before launch; **do not** promise production SLOs beyond what the chosen Clerk plan documents. Pilot BR SMS uses **+55 allowlist** in Clerk Dashboard as documented in runbooks.
 
 ## Environment Availability
 
@@ -304,7 +297,7 @@ Step 2.6 executed on **Windows 10** (developer machine, 2026-04-09).
 
 | Property | Value |
 |----------|-------|
-| Framework | Vitest **4.1.4** [VERIFIED: npm registry] (not yet in repo) |
+| Framework | Vitest **2.x** (aligned with `01-01-PLAN.md` pin; not yet in repo) |
 | Config file | `apps/api/vitest.config.ts` — **Wave 0** |
 | Quick run command | `pnpm vitest run` (from `apps/api` once scaffolded) |
 | Full suite command | `pnpm turbo run test` (once Turborepo exists) |

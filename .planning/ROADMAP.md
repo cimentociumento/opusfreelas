@@ -25,13 +25,15 @@
 
 **Requirements:** AUTH-01, AUTH-02, AUTH-03
 
-**Plans:** 4 plans
+**Plans:** 6 plans
 
 Plans:
-- [ ] `01-01-PLAN.md` — Monorepo (pnpm/turbo), shared role contracts, Expo SDK 55 + Clerk phone OTP, minimal Hono API + Vitest + CI (**AUTH-01**)
-- [ ] `01-02-PLAN.md` — SecureStore Clerk token cache, session runbook (D-04/D-02), settings + `POST /rpc/session/revoke-all` (**AUTH-02**, D-05)
-- [ ] `01-03-PLAN.md` — Supabase SQL migrations (`profiles` + RLS for Clerk `sub`), **[BLOCKING] `supabase db push`**, Firebase support doc (**AUTH-03**)
-- [ ] `01-04-PLAN.md` — Clerk `authorizedParties` middleware, Supabase user client, RPC identity + role tests, pino + `@hono/otel` (**AUTH-03**, D-10)
+- [ ] `01-01-PLAN.md` — pnpm/Turborepo monorepo, `@amauc/shared` role contracts (Zod), minimal Hono API + Vitest smoke (**AUTH-03**)
+- [ ] `01-02-PLAN.md` — Expo SDK 55 + expo-router shell for mobile (**AUTH-01**)
+- [ ] `01-03-PLAN.md` — Supabase CLI, `profiles` + RLS migration, runbook, **[BLOCKING] `supabase db push`** (`scripts/verify-supabase-push-evidence.mjs`) (**AUTH-03**)
+- [ ] `01-04-PLAN.md` — Clerk JWT middleware, RPC identity, session revoke, role unit tests (**AUTH-03**)
+- [ ] `01-05-PLAN.md` — `@clerk/clerk-expo` phone OTP, SecureStore + Supabase client (**AUTH-01**, **AUTH-02**)
+- [ ] `01-06-PLAN.md` — GitHub Actions CI, pino + `@hono/otel`, Firebase `expo.extra` stub (D-09, D-10; no extra REQ-ID — AUTH-02 proven in 01-05)
 
 **Success Criteria:**
 1. User can authenticate via OTP phone flow and access account.
