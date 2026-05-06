@@ -1,14 +1,24 @@
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
-import { 
-  createDemandSchema, 
-  updateDemandSchema, 
-  type CreateDemandInput, 
-  type UpdateDemandInput,
-  demandResponseSchema
-} from "@amauc/shared";
 import type { Context } from "hono";
 import { getAuthUser } from "../middleware/clerk.js";
+
+const demandStatusSchema = z.enum(["aberta", "em_contato", "encerrada"]);
+const demandUrgencySchema = z.enum(["baixa", "media", "alta", "urgente_hoje"]);
+
+const createDemandSchema = z.object({
+  serviceType: z.string().min(2).max(100),
+  description: z.string().min(30).max(1000),
+  municipality: z.string().min(2).max(100),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  urgency: demandUrgencySchema.default("media"),
+  visibilityRadius: z.number().int().min(1).max(100).default(10),
+});
+
+const updateDemandSchema = createDemandSchema.partial().extend({
+  status: demandStatusSchema.optional(),
+});
 
 function getSupabaseAdmin() {
   const url = process.env.SUPABASE_URL;

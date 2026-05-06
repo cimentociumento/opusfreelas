@@ -1,14 +1,29 @@
 import { createClient } from "@supabase/supabase-js";
-import { 
-  assertCanActAs, 
-  profileRoleFlagsSchema,
-  updateProviderProfileSchema 
-} from "@amauc/shared";
 import { z } from "zod";
 import type { Context } from "hono";
 import { getAuthUser } from "../middleware/clerk.js";
 
-const rolesUpdateSchema = profileRoleFlagsSchema;
+const rolesUpdateSchema = z.object({
+  isContractor: z.boolean(),
+  isProvider: z.boolean(),
+});
+
+const serviceCategories = [
+  "Roçada / Capina",
+  "Diarista / Faxina",
+  "Operador de Máquina Agrícola",
+  "Serviços Gerais / Pequenos Reparos",
+  "Pedreiro / Servente",
+  "Pintura",
+  "Eletricista / Encanador",
+  "Cuidado com Animais",
+] as const;
+
+const updateProviderProfileSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  serviceCategories: z.array(z.enum(serviceCategories)),
+});
 
 const providerOnlyInputSchema = z.object({
   message: z.string().optional(),
@@ -148,12 +163,7 @@ export const identityHandlers = {
     }
 
     const profile = await getProfileByClerkUserId(auth.userId);
-    try {
-      assertCanActAs(
-        { roles: { isContractor: profile.is_contractor, isProvider: profile.is_provider } },
-        "provider"
-      );
-    } catch {
+    if (!profile.is_provider) {
       return c.json({ error: "Forbidden", reason: "Provider role required" }, 403);
     }
 

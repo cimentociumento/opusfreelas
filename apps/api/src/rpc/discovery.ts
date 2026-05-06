@@ -1,12 +1,31 @@
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Context } from "hono";
-import { getAuthUser } from "../middleware/clerk.js";
-import { 
-  providerSearchSchema, 
-  ProviderResult,
-  serviceCategorySchema
-} from "@amauc/shared";
+
+const serviceCategories = [
+  "Roçada / Capina",
+  "Diarista / Faxina",
+  "Operador de Máquina Agrícola",
+  "Serviços Gerais / Pequenos Reparos",
+  "Pedreiro / Servente",
+  "Pintura",
+  "Eletricista / Encanador",
+  "Cuidado com Animais",
+] as const;
+
+const providerSearchSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  category: z.enum(serviceCategories).optional(),
+  radius: z.number().int().min(1).max(200).default(50),
+});
+
+type ProviderResult = {
+  clerkUserId: string;
+  isProvider: boolean;
+  serviceCategories: string[];
+  distanceMeters: number;
+};
 
 function getSupabaseAdmin() {
   const url = process.env.SUPABASE_URL;
