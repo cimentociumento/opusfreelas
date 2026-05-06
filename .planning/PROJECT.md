@@ -1,8 +1,8 @@
-# Opus Freelas
+# AMAUC Freelas
 
 ## What This Is
 
-Opus Freelas e uma plataforma multiplataforma de freelancing focada em servicos manuais e rurais na regiao da Associacao dos Municipios do Alto Uruguai Catarinense (AMAUC). O produto conecta contratantes locais a prestadores como capineiros, rocadores, operadores de maquinas agricolas, diaristas e autonomos em geral. No V1, o foco principal e facilitar o lado do contratante para publicar demandas e encontrar prestadores rapidamente.
+AMAUC Freelas e uma plataforma multiplataforma de freelancing focada em servicos manuais e rurais na regiao da Associacao dos Municipios do Alto Uruguai Catarinense (AMAUC). O produto conecta contratantes locais a prestadores como capineiros, rocadores, operadores de maquinas agricolas, diaristas e autonomos em geral. No V1, o foco principal e facilitar o lado do contratante para publicar demandas e encontrar prestadores rapidamente.
 
 ## Core Value
 

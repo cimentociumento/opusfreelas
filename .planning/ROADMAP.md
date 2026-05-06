@@ -1,4 +1,4 @@
-# Roadmap: Opus Freelas
+# Roadmap: AMAUC Freelas
 
 **Generated:** 2026-04-09
 **Source:** `.planning/PROJECT.md`, `.planning/REQUIREMENTS.md`, `.planning/research/SUMMARY.md`
