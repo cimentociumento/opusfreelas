@@ -9,8 +9,13 @@
   },
   "dependencies": {
     "@amauc/shared": "workspace:*",
+    "@clerk/backend": "^3.2.0",
     "@hono/node-server": "^1.13.7",
-    "hono": "^4.12.0"
+    "@hono/otel": "^1.1.0",
+    "@supabase/supabase-js": "^2.49.0",
+    "hono": "^4.12.0",
+    "pino": "^9.7.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
