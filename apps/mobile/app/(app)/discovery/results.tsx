@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useRpc } from "../../../hooks/use-rpc";
+import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { ProviderResult } from "@amauc/shared";
+import { Card, Button, theme } from "../../../components";
 
 function paramToString(value: string | string[] | undefined): string | undefined {
   if (value == null) return undefined;
@@ -13,7 +14,7 @@ export default function DiscoveryResultsScreen() {
   const params = useLocalSearchParams<{ category?: string | string[] }>();
   const category = paramToString(params.category);
   const router = useRouter();
-  const { callRpc } = useRpc();
+  const { callRpc, isDevMode } = useRpcWithDevMode();
   
   const [results, setResults] = useState<ProviderResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,16 +46,17 @@ export default function DiscoveryResultsScreen() {
   }, [fetchResults]);
 
   const renderItem = ({ item }: { item: ProviderResult }) => (
-    <View style={styles.card}>
+    <Card variant="elevated" style={styles.card}>
       <View style={styles.cardHeader}>
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarText}>{item.clerkUserId.substring(0, 2).toUpperCase()}</Text>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>👤</Text>
         </View>
         <View style={styles.cardInfo}>
-          <Text style={styles.providerName}>Profissional</Text>
+          <Text style={styles.providerName}>Profissional Local</Text>
           <Text style={styles.distance}>
-            A { (item.distanceMeters / 1000).toFixed(1) } km de você
+            📍 A { (item.distanceMeters / 1000).toFixed(1) } km de você
           </Text>
+          <Text style={styles.availability}>Disponível para trabalhos</Text>
         </View>
       </View>
       
@@ -66,27 +68,42 @@ export default function DiscoveryResultsScreen() {
         ))}
       </View>
 
-      <TouchableOpacity 
-        style={styles.profileBtn}
-        onPress={() =>
-          router.push({
-            pathname: "/profile/provider-setup",
-            params: { previewUserId: item.clerkUserId },
-          })
-        }
-      >
-        <Text style={styles.profileBtnText}>Ver Perfil Completo</Text>
-      </TouchableOpacity>
-    </View>
+      <View style={styles.actions}>
+        <Button 
+          title="Ver Perfil" 
+          variant="primary" 
+          size="sm"
+          style={styles.actionBtn}
+          onPress={() =>
+            router.push({
+              pathname: "/profile/provider-setup",
+              params: { previewUserId: item.clerkUserId },
+            })
+          }
+        />
+        <Button 
+          title="Contatar" 
+          variant="secondary" 
+          size="sm"
+          style={styles.actionBtn}
+          onPress={() => {}}
+        />
+      </View>
+    </Card>
   );
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: category ? `${category}` : "Profissionais" }} />
+      <Stack.Screen 
+        options={{ 
+          title: category ? `${category}` : "Profissionais"
+        }} 
+      />
       
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#116530" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Buscando profissionais...</Text>
         </View>
       ) : (
         <FlatList
@@ -100,12 +117,18 @@ export default function DiscoveryResultsScreen() {
             fetchResults();
           }}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>Nenhum profissional encontrado</Text>
+            <Card style={styles.empty}>
+              <Text style={styles.emptyTitle}>😔 Nenhum profissional encontrado</Text>
               <Text style={styles.emptySubtitle}>
                 Tente aumentar o raio de busca ou selecionar outra categoria.
               </Text>
-            </View>
+              <Button 
+                title="Voltar" 
+                variant="outline" 
+                size="md"
+                onPress={() => router.back()}
+              />
+            </Card>
           }
         />
       )}
@@ -116,99 +139,99 @@ export default function DiscoveryResultsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: theme.colors.background,
   },
   list: {
-    padding: 16,
+    padding: theme.spacing.md,
+    gap: theme.spacing.md,
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    gap: theme.spacing.md,
+  },
+  loadingText: {
+    ...theme.typography.body1,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginBottom: theme.spacing.md,
   },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
-  avatarPlaceholder: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#116530",
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: theme.spacing.md,
   },
   avatarText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 18,
+    fontSize: 24,
   },
   cardInfo: {
     flex: 1,
   },
   providerName: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#333",
+    ...theme.typography.h3,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.xs,
   },
   distance: {
-    fontSize: 14,
-    color: "#666",
+    ...theme.typography.body2,
+    color: theme.colors.primary,
+    fontWeight: "700",
+    marginBottom: theme.spacing.xs,
+  },
+  availability: {
+    ...theme.typography.caption,
+    color: theme.colors.success,
   },
   categories: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 20,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   categoryBadge: {
-    backgroundColor: "#e8f5e9",
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    backgroundColor: theme.colors.primaryLight,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
   },
   categoryText: {
-    fontSize: 12,
-    color: "#116530",
-    fontWeight: "600",
-  },
-  profileBtn: {
-    backgroundColor: "#116530",
-    padding: 14,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  profileBtnText: {
-    color: "#fff",
+    ...theme.typography.caption,
+    color: theme.colors.primary,
     fontWeight: "700",
-    fontSize: 14,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+  },
+  actionBtn: {
+    flex: 1,
   },
   empty: {
-    padding: 40,
+    padding: theme.spacing.xl,
     alignItems: "center",
+    gap: theme.spacing.md,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#333",
-    marginBottom: 8,
+    ...theme.typography.h3,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
   },
   emptySubtitle: {
-    fontSize: 14,
-    color: "#666",
+    ...theme.typography.body1,
+    color: theme.colors.textSecondary,
     textAlign: "center",
+    marginBottom: theme.spacing.lg,
   },
 });

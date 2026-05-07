@@ -1,23 +1,41 @@
-import { SignedIn, SignedOut, useAuth } from "@clerk/clerk-expo";
-import { Link } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { useAuth } from "@clerk/clerk-expo";
+import { Link, Stack } from "expo-router";
+import { StyleSheet, Text, View, ScrollView } from "react-native";
+import { Button, Card, DevModeToggle, DevAuthWrapper, theme } from "../components";
 
 export default function HomeScreen() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Opus Freelas</Text>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <ScrollView style={styles.container}>
+        <View style={styles.hero}>
+          <Text style={styles.title}>Opus Freelas</Text>
+          <Text style={styles.tagline}>Conectando profissionais locais à quem precisa</Text>
+        </View>
 
-      <SignedOut>
-        <Text style={styles.subtitle}>Você está desconectado. Faça login com OTP para continuar.</Text>
-        <Link href="/sign-in" style={styles.link}>
-          Ir para login
-        </Link>
-      </SignedOut>
+        <DevAuthWrapper
+          signedOutComponent={
+            <View style={styles.authSection}>
+              <Card style={styles.authCard}>
+                <Text style={styles.authTitle}>Bem-vindo ao Opus Freelas</Text>
+                <Text style={styles.authSubtitle}>
+                  Encontre os melhores profissionais para serviços manuais e rurais na região da AMAUC
+                </Text>
+                <Link href="/sign-in" asChild>
+                  <Button title="Entrar e Começar" variant="primary" size="lg" onPress={() => {}} />
+                </Link>
+              </Card>
+            </View>
+          }
+          signedInComponent={<SignedInContent />}
+        />
 
-      <SignedIn>
-        <SignedInContent />
-      </SignedIn>
-    </View>
+        {/* Development Mode Toggle - apenas aqui */}
+        <View style={styles.devToggleContainer}>
+          <DevModeToggle />
+        </View>
+      </ScrollView>
+    </>
   );
 }
 
@@ -25,30 +43,72 @@ function SignedInContent() {
   const { signOut } = useAuth();
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.subtitle}>Sessão ativa com Clerk</Text>
-      
-      <View style={styles.menu}>
-        <Text style={styles.menuTitle}>Contratante</Text>
-        <Link href="/discovery" style={styles.menuItem}>
-          <Text style={styles.menuText}>🔍 Encontrar Profissionais</Text>
-        </Link>
-        <Link href="/demands/create" style={styles.menuItemSecondary}>
-          <Text style={styles.menuTextSecondary}>Publicar Nova Demanda</Text>
-        </Link>
-        <Link href="/demands" style={styles.menuItemSecondary}>
-          <Text style={styles.menuTextSecondary}>Minhas Demandas</Text>
-        </Link>
-
-        <Text style={[styles.menuTitle, { marginTop: 20 }]}>Prestador</Text>
-        <Link href="/profile/provider-setup" style={styles.menuItem}>
-          <Text style={styles.menuText}>⚙️ Configurar Meu Perfil</Text>
-        </Link>
+    <View style={styles.content}>
+      <View style={styles.welcomeSection}>
+        <Card style={styles.welcomeCard}>
+          <Text style={styles.welcomeTitle}>Olá! 👋</Text>
+          <Text style={styles.welcomeSubtitle}>
+            Encontre profissionais para seus serviços
+          </Text>
+        </Card>
       </View>
 
-      <Text style={styles.link} onPress={() => signOut()}>
-        Sair
-      </Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>🏠 Sou Contratante</Text>
+        <Card variant="elevated" style={styles.actionCard}>
+          <Link href="/discovery" asChild>
+            <Button
+              title="🔍 Encontrar Profissionais"
+              variant="primary"
+              size="lg"
+              style={styles.actionButton}
+              onPress={() => {}}
+            />
+          </Link>
+          <Link href="/demands/create" asChild>
+            <Button
+              title="📝 Publicar Demanda"
+              variant="secondary"
+              size="md"
+              style={styles.actionButton}
+              onPress={() => {}}
+            />
+          </Link>
+          <Link href="/demands" asChild>
+            <Button
+              title="📋 Minhas Demandas"
+              variant="outline"
+              size="md"
+              style={styles.actionButton}
+              onPress={() => {}}
+            />
+          </Link>
+        </Card>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>👨‍🔧 Sou Prestador</Text>
+        <Card variant="elevated" style={styles.actionCard}>
+          <Link href="/profile/provider-setup" asChild>
+            <Button
+              title="⚙️ Configurar Meu Perfil"
+              variant="primary"
+              size="lg"
+              style={styles.actionButton}
+              onPress={() => {}}
+            />
+          </Link>
+        </Card>
+      </View>
+
+      <View style={styles.logoutSection}>
+        <Button
+          title="Sair"
+          variant="ghost"
+          size="sm"
+          onPress={() => signOut()}
+        />
+      </View>
     </View>
   );
 }
@@ -56,69 +116,87 @@ function SignedInContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.background,
+  },
+  hero: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.xl,
     alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#116530",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    color: "#666",
-    marginBottom: 24,
-  },
-  card: {
-    alignItems: "center",
-    width: "100%",
-  },
-  menu: {
-    width: "100%",
-    marginBottom: 32,
-  },
-  menuTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#999",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 12,
-    marginLeft: 4,
-  },
-  menuItem: {
-    backgroundColor: "#116530",
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 12,
-    alignItems: "center",
-  },
-  menuText: {
+    ...theme.typography.h1,
     color: "#fff",
-    fontWeight: "800",
-    fontSize: 18,
+    textAlign: "center",
+    marginBottom: theme.spacing.sm,
   },
-  menuItemSecondary: {
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#eee",
+  tagline: {
+    ...theme.typography.body1,
+    color: "rgba(255, 255, 255, 0.9)",
+    textAlign: "center",
+  },
+  content: {
+    padding: theme.spacing.lg,
+  },
+  authSection: {
+    marginTop: theme.spacing.xl,
+  },
+  authCard: {
+    alignItems: "center",
+    padding: theme.spacing.xl,
+  },
+  authTitle: {
+    ...theme.typography.h2,
+    color: theme.colors.text,
+    textAlign: "center",
+    marginBottom: theme.spacing.md,
+  },
+  authSubtitle: {
+    ...theme.typography.body1,
+    color: theme.colors.textSecondary,
+    textAlign: "center",
+    marginBottom: theme.spacing.lg,
+    lineHeight: 24,
+  },
+  welcomeSection: {
+    marginBottom: theme.spacing.lg,
+  },
+  welcomeCard: {
+    alignItems: "center",
+    padding: theme.spacing.lg,
+  },
+  welcomeTitle: {
+    ...theme.typography.h2,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.sm,
+  },
+  welcomeSubtitle: {
+    ...theme.typography.body1,
+    color: theme.colors.textSecondary,
+  },
+  section: {
+    marginBottom: theme.spacing.lg,
+  },
+  sectionTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
+    marginLeft: theme.spacing.sm,
+  },
+  actionCard: {
+    padding: theme.spacing.lg,
+  },
+  actionButton: {
+    marginBottom: theme.spacing.md,
+  },
+  logoutSection: {
+    marginTop: theme.spacing.xl,
     alignItems: "center",
   },
-  menuTextSecondary: {
-    color: "#444",
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  link: {
-    color: "#d32f2f",
-    fontWeight: "700",
-    fontSize: 16,
+  devToggleContainer: {
+    position: 'absolute',
+    top: theme.spacing.lg,
+    right: theme.spacing.md,
+    zIndex: 1000,
   },
 });
