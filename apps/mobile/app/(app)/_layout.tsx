@@ -1,6 +1,7 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { Redirect, Stack } from "expo-router";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { useDevelopmentMode } from "../../hooks/use-development-mode";
 
 /**
  * Rotas autenticadas: demandas, descoberta, perfil.
@@ -8,8 +9,12 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
  */
 export default function AppGroupLayout() {
   const { isLoaded, isSignedIn } = useAuth();
+  const { isDevMode, isLoading: devModeLoading } = useDevelopmentMode();
 
-  if (!isLoaded) {
+  console.log(`🛠️ AppGroupLayout: isDevMode = ${isDevMode}, isSignedIn = ${isSignedIn}, devModeLoading = ${devModeLoading}`);
+
+  // Enquanto carrega qualquer estado, mostra loading
+  if (!isLoaded || devModeLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#116530" />
@@ -17,7 +22,15 @@ export default function AppGroupLayout() {
     );
   }
 
+  // No modo DEV, permite acesso mesmo sem login
+  if (isDevMode) {
+    console.log('🛠️ DEV MODE: Permitindo acesso sem autenticação');
+    return <Stack screenOptions={{ headerShown: true }} />;
+  }
+
+  // No modo PROD, exige login
   if (!isSignedIn) {
+    console.log('📱 PROD MODE: Redirecionando para login');
     return <Redirect href="/sign-in" />;
   }
 

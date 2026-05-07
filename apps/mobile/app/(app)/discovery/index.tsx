@@ -1,9 +1,15 @@
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, ScrollView } from "react-native";
+import { StyleSheet, Text, View, ScrollView, Dimensions, TouchableOpacity } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { serviceCategories } from "@amauc/shared";
+import { Card, Button, theme } from "../../../components";
+import { useDevelopmentMode } from "../../../hooks/use-development-mode";
 
 export default function DiscoveryScreen() {
   const router = useRouter();
+  const screenWidth = Dimensions.get('window').width;
+  const { isDevMode } = useDevelopmentMode();
+
+  console.log(`🛠️ DiscoveryScreen: isDevMode = ${isDevMode}`);
 
   const handleCategorySelect = (category: string) => {
     router.push({
@@ -12,37 +18,56 @@ export default function DiscoveryScreen() {
     });
   };
 
+  const getCategoryIcon = (category: string) => {
+    const icons: { [key: string]: string } = {
+      "Roçada / Capina": "🌱",
+      "Diarista / Faxina": "🧹",
+      "Operador de Máquina Agrícola": "🚜",
+      "Serviços Gerais / Pequenos Reparos": "🔧",
+      "Pedreiro / Servente": "🧱",
+      "Pintura": "🎨",
+      "Eletricista / Encanador": "⚡",
+      "Cuidado com Animais": "🐕",
+    };
+    return icons[category] || "📋";
+  };
+
   return (
     <ScrollView style={styles.container}>
       <Stack.Screen options={{ title: "O que você precisa?" }} />
       
       <View style={styles.header}>
-        <Text style={styles.title}>Encontre profissionais perto de você</Text>
-        <Text style={styles.subtitle}>Selecione uma categoria para começar</Text>
+        <Text style={styles.title}>Encontre profissionais</Text>
+        <Text style={styles.subtitle}>Escolha o serviço que você precisa</Text>
       </View>
 
       <View style={styles.grid}>
         {serviceCategories.map((item) => (
-          <TouchableOpacity 
+          <Card 
             key={item} 
-            style={styles.card}
-            onPress={() => handleCategorySelect(item)}
+            variant="elevated"
+            style={styles.categoryCard}
           >
-            <View style={styles.iconPlaceholder}>
-              <Text style={styles.iconText}>{item[0]}</Text>
-            </View>
-            <Text style={styles.cardText}>{item}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleCategorySelect(item)}>
+              <View style={styles.iconContainer}>
+                <Text style={styles.iconText}>{getCategoryIcon(item)}</Text>
+              </View>
+              <Text style={styles.categoryText}>{item}</Text>
+              <Text style={styles.categorySubtext}>Ver profissionais</Text>
+            </TouchableOpacity>
+          </Card>
         ))}
       </View>
 
       <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.allBtn}
-          onPress={() => handleCategorySelect("")}
-        >
-          <Text style={styles.allBtnText}>Ver todos os profissionais</Text>
-        </TouchableOpacity>
+        <Card style={styles.allCard}>
+          <Button 
+            title="🔍 Ver todos os profissionais" 
+            variant="outline" 
+            size="lg"
+            onPress={() => handleCategorySelect("")}
+          />
+        </Card>
       </View>
     </ScrollView>
   );
@@ -51,76 +76,64 @@ export default function DiscoveryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: theme.colors.background,
   },
   header: {
-    padding: 24,
-    backgroundColor: "#f9f9f9",
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "800",
-    color: "#116530",
-    marginBottom: 8,
+    ...theme.typography.h2,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: "#666",
+    ...theme.typography.body1,
+    color: theme.colors.textSecondary,
   },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    padding: 12,
-    gap: 12,
+    padding: theme.spacing.md,
+    gap: theme.spacing.md,
   },
-  card: {
+  categoryCard: {
     width: "47%",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#eee",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    padding: theme.spacing.lg,
+    minHeight: 140,
   },
-  iconPlaceholder: {
+  iconContainer: {
     width: 60,
     height: 60,
-    borderRadius: 30,
-    backgroundColor: "#e8f5e9",
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
+    marginBottom: theme.spacing.md,
   },
   iconText: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#116530",
+    fontSize: 28,
   },
-  cardText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
+  categoryText: {
+    ...theme.typography.body2,
+    color: theme.colors.text,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: theme.spacing.xs,
+  },
+  categorySubtext: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
     textAlign: "center",
   },
   footer: {
-    padding: 24,
-    marginBottom: 40,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
   },
-  allBtn: {
-    backgroundColor: "#f5f5f5",
-    padding: 18,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  allBtnText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#666",
+  allCard: {
+    padding: theme.spacing.lg,
   },
 });

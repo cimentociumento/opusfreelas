@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { useRpc } from "../../../hooks/use-rpc";
+import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { serviceCategories, ServiceCategory } from "@amauc/shared";
+import { theme } from "../../../components";
+import { useDevelopmentMode } from "../../../hooks/use-development-mode";
 
 export default function ProviderSetupScreen() {
   const router = useRouter();
-  const { callRpc } = useRpc();
+  const { callRpc, isDevMode } = useRpcWithDevMode();
+  const { isDevMode: devMode } = useDevelopmentMode();
+  
+  console.log(`🛠️ ProviderSetupScreen: isDevMode = ${isDevMode}`);
   
   const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(false);
