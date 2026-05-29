@@ -1,11 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { 
   StyleSheet, 
   Text, 
   View, 
   TextInput, 
   ScrollView, 
-  ActivityIndicator,
   Alert 
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
@@ -15,7 +14,8 @@ import { Card, Button, theme } from "../../../components";
 
 export default function CreateDemandScreen() {
   const router = useRouter();
-  const { callRpc, isDevMode } = useRpcWithDevMode();
+  const { callRpc } = useRpcWithDevMode();
+  const isSubmittingRef = useRef(false);
   
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<CreateDemandInput>({
@@ -29,21 +29,24 @@ export default function CreateDemandScreen() {
   });
 
   const handleSubmit = async () => {
+    if (isSubmittingRef.current) return;
+
     if (form.description.length < 30) {
       Alert.alert("Erro", "A descrição deve ter pelo menos 30 caracteres.");
       return;
     }
 
+    isSubmittingRef.current = true;
     setLoading(true);
+
     try {
       await callRpc<DemandResponse>("demands.create", form);
-      Alert.alert("Sucesso", "Demanda publicada com sucesso!", [
-        { text: "OK", onPress: () => router.replace("/demands") }
-      ]);
+      router.replace("/");
+      Alert.alert("Sucesso", "Demanda publicada com sucesso!");
     } catch (error: any) {
-      Alert.alert("Erro ao publicar", error.message);
-    } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
+      Alert.alert("Erro ao publicar", error.message);
     }
   };
 
@@ -119,15 +122,24 @@ export default function CreateDemandScreen() {
           </View>
         </Card>
 
-        <View style={styles.actionArea}>
-          <Button 
-            title={loading ? "Publicando..." : "🚀 Publicar Demanda"}
-            variant="primary"
-            size="lg"
-            onPress={handleSubmit}
-            disabled={loading}
-            loading={loading}
-          />
+        <View style={styles.actionArea} pointerEvents={loading ? "none" : "auto"}>
+          {loading ? (
+            <Button
+              title="Publicando..."
+              variant="primary"
+              size="lg"
+              onPress={() => {}}
+              disabled
+              loading
+            />
+          ) : (
+            <Button
+              title="🚀 Publicar Demanda"
+              variant="primary"
+              size="lg"
+              onPress={handleSubmit}
+            />
+          )}
         </View>
       </View>
     </ScrollView>

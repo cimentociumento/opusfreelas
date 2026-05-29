@@ -119,11 +119,17 @@ export function Button({
     }
   };
 
+  const handlePress = () => {
+    if (disabled || loading) return;
+    onPress();
+  };
+
   return (
     <TouchableOpacity
       style={[getButtonStyle(), getSizeStyle(), style]}
-      onPress={onPress}
+      onPress={handlePress}
       disabled={disabled || loading}
+      activeOpacity={disabled || loading ? 1 : 0.7}
     >
       {loading ? (
         <ActivityIndicator color="#fff" />
