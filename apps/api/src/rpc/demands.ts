@@ -54,6 +54,22 @@ export const demandHandlers = {
     const { serviceType, description, municipality, latitude, longitude, urgency, visibilityRadius } = parsed.data;
     const supabase = getSupabaseAdmin();
 
+    const duplicateWindowStart = new Date(Date.now() - 60_000).toISOString();
+    const { data: recentDuplicate } = await supabase
+      .from("demands")
+      .select()
+      .eq("contractor_id", auth.userId)
+      .eq("service_type", serviceType)
+      .eq("description", description)
+      .gte("created_at", duplicateWindowStart)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentDuplicate) {
+      return c.json(mapDemandRow(recentDuplicate));
+    }
+
     // Use RPC or raw SQL for PostGIS insertion if possible, 
     // but Supabase JS allows strings for geography in some versions or via explicit casting in RPC.
     // Here we use a common pattern for PostGIS via Supabase: ST_SetSRID(ST_MakePoint(lng, lat), 4326)

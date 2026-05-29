@@ -1,77 +1,82 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { serviceCategories, ServiceCategory } from "@amauc/shared";
 import { theme } from "../../../components";
-import { useDevelopmentMode } from "../../../hooks/use-development-mode";
 
 export default function ProviderSetupScreen() {
   const router = useRouter();
-  const { callRpc, isDevMode } = useRpcWithDevMode();
-  const { isDevMode: devMode } = useDevelopmentMode();
-  
-  console.log(`🛠️ ProviderSetupScreen: isDevMode = ${isDevMode}`);
-  
+  const { callRpc } = useRpcWithDevMode();
+  const isSavingRef = useRef(false);
+
   const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(false);
 
   const toggleCategory = (cat: ServiceCategory) => {
+    if (loading) return;
     if (selectedCategories.includes(cat)) {
-      setSelectedCategories(selectedCategories.filter(c => c !== cat));
+      setSelectedCategories(selectedCategories.filter((c) => c !== cat));
     } else {
       setSelectedCategories([...selectedCategories, cat]);
     }
   };
 
   const handleSave = async () => {
+    if (isSavingRef.current) return;
+
     if (selectedCategories.length === 0) {
       Alert.alert("Erro", "Selecione pelo menos uma categoria.");
       return;
     }
 
+    isSavingRef.current = true;
     setLoading(true);
+
     try {
-      // Mock location for Concórdia/SC
       const latitude = -27.23;
       const longitude = -52.03;
+
+      await callRpc("identity.updateRoles", {
+        isContractor: true,
+        isProvider: true,
+      });
 
       await callRpc("identity.updateProviderProfile", {
         latitude,
         longitude,
-        serviceCategories: selectedCategories
+        serviceCategories: selectedCategories,
       });
 
       Alert.alert("Sucesso", "Perfil atualizado! Agora você pode ser encontrado por contratantes.", [
-        { text: "OK", onPress: () => router.back() }
+        { text: "OK", onPress: () => router.replace("/") },
       ]);
     } catch (error: any) {
-      Alert.alert("Erro ao salvar", error.message);
-    } finally {
+      isSavingRef.current = false;
       setLoading(false);
+      Alert.alert("Erro ao salvar", error.message);
     }
   };
 
   return (
     <ScrollView style={styles.container}>
       <Stack.Screen options={{ title: "Configurar Perfil" }} />
-      
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Suas Categorias</Text>
         <Text style={styles.sectionSubtitle}>Selecione os serviços que você oferece</Text>
-        
+
         <View style={styles.grid}>
           {serviceCategories.map((cat) => {
             const isSelected = selectedCategories.includes(cat as ServiceCategory);
             return (
-              <TouchableOpacity 
-                key={cat} 
+              <TouchableOpacity
+                key={cat}
                 style={[styles.chip, isSelected && styles.chipSelected]}
                 onPress={() => toggleCategory(cat as ServiceCategory)}
+                disabled={loading}
               >
-                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                  {cat}
-                </Text>
+                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{cat}</Text>
               </TouchableOpacity>
             );
           })}
@@ -88,12 +93,8 @@ export default function ProviderSetupScreen() {
         </View>
       </View>
 
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.saveBtn}
-          onPress={handleSave}
-          disabled={loading}
-        >
+      <View style={styles.footer} pointerEvents={loading ? "none" : "auto"}>
+        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={loading}>
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -140,8 +141,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   chipSelected: {
-    backgroundColor: "#116530",
-    borderColor: "#116530",
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   chipText: {
     fontSize: 14,
@@ -160,7 +161,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 16,
-    color: "#116530",
+    color: theme.colors.primary,
     fontWeight: "700",
   },
   footer: {
@@ -168,7 +169,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   saveBtn: {
-    backgroundColor: "#116530",
+    backgroundColor: theme.colors.primary,
     padding: 18,
     borderRadius: 12,
     alignItems: "center",

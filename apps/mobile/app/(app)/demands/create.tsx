@@ -9,7 +9,12 @@ import {
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
-import { CreateDemandInput, DemandResponse, demandUrgencySchema } from "@amauc/shared";
+import {
+  CreateDemandInput,
+  DemandResponse,
+  createDemandSchema,
+  demandUrgencySchema,
+} from "@amauc/shared";
 import { Card, Button, theme } from "../../../components";
 
 export default function CreateDemandScreen() {
@@ -31,8 +36,10 @@ export default function CreateDemandScreen() {
   const handleSubmit = async () => {
     if (isSubmittingRef.current) return;
 
-    if (form.description.length < 30) {
-      Alert.alert("Erro", "A descrição deve ter pelo menos 30 caracteres.");
+    const parsed = createDemandSchema.safeParse(form);
+    if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0];
+      Alert.alert("Erro", firstIssue?.message ?? "Preencha todos os campos corretamente.");
       return;
     }
 
@@ -40,9 +47,11 @@ export default function CreateDemandScreen() {
     setLoading(true);
 
     try {
-      await callRpc<DemandResponse>("demands.create", form);
+      await callRpc<DemandResponse>("demands.create", parsed.data);
+      if (router.canDismiss()) {
+        router.dismissAll();
+      }
       router.replace("/");
-      Alert.alert("Sucesso", "Demanda publicada com sucesso!");
     } catch (error: any) {
       isSubmittingRef.current = false;
       setLoading(false);
@@ -71,6 +80,7 @@ export default function CreateDemandScreen() {
             placeholder="Ex: Capina, Pintura, Diarista"
             value={form.serviceType}
             onChangeText={(text) => setForm({ ...form, serviceType: text })}
+            editable={!loading}
           />
 
           <Text style={styles.label}>📝 Descrição do serviço</Text>
@@ -81,6 +91,7 @@ export default function CreateDemandScreen() {
             numberOfLines={4}
             value={form.description}
             onChangeText={(text) => setForm({ ...form, description: text })}
+            editable={!loading}
           />
           <Text style={styles.helperText}>
             {form.description.length}/30 caracteres mínimos
@@ -91,6 +102,7 @@ export default function CreateDemandScreen() {
             style={styles.input}
             value={form.municipality}
             onChangeText={(text) => setForm({ ...form, municipality: text })}
+            editable={!loading}
           />
 
           <Text style={styles.label}>⚡ Nível de Urgência</Text>

@@ -41,8 +41,9 @@ export async function requireClerkAuth(c: Context, next: Next) {
   }
 
   const clerk = getClerkClient();
+  const authorizedParties = getAuthorizedParties();
   const requestState = await clerk.authenticateRequest(c.req.raw, {
-    authorizedParties: getAuthorizedParties(),
+    ...(authorizedParties.length > 0 ? { authorizedParties } : {}),
     jwtKey: process.env.CLERK_JWT_KEY || undefined,
   });
 
