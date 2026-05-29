@@ -12,17 +12,24 @@ export function useRpc() {
       throw new Error("Sessao invalida: faca login novamente.");
     }
 
-    const response = await fetch(`${apiBaseUrl}/rpc`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        procedure,
-        input: input ?? {},
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${apiBaseUrl}/rpc`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          procedure,
+          input: input ?? {},
+        }),
+      });
+    } catch {
+      throw new Error(
+        `Nao foi possivel conectar na API (${apiBaseUrl}). Verifique se a API esta rodando e se EXPO_PUBLIC_API_URL aponta para o IP correto no Expo Go.`
+      );
+    }
 
     const text = await response.text();
     let data: unknown;

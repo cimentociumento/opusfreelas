@@ -10,7 +10,7 @@ import {
   TextInput
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useRpc } from "../../../hooks/use-rpc";
+import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { DemandResponse, demandUrgencySchema, demandStatusSchema } from "@amauc/shared";
 
 function paramToString(value: string | string[] | undefined): string | undefined {
@@ -22,7 +22,7 @@ export default function DemandDetailsScreen() {
   const { id: idParam } = useLocalSearchParams<{ id?: string | string[] }>();
   const id = paramToString(idParam);
   const router = useRouter();
-  const { callRpc } = useRpc();
+  const { callRpc } = useRpcWithDevMode();
   
   const [demand, setDemand] = useState<DemandResponse | null>(null);
   const [loading, setLoading] = useState(true);

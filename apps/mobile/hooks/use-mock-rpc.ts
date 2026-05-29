@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { ProviderResult, DemandResponse, CreateDemandInput } from "@amauc/shared";
+import { ProviderResult, DemandResponse, CreateDemandInput, DemandStatus } from "@amauc/shared";
 
 // Mock data para demonstração
 const mockProviders: ProviderResult[] = [
@@ -81,8 +81,18 @@ export function useMockRpc() {
       case "demands.listMyDemands":
         return mockDemands as T;
 
-      case "demands.create":
+      case "demands.create": {
         const demandInput = input as CreateDemandInput;
+        const duplicate = mockDemands.find(
+          (d) =>
+            d.serviceType === demandInput.serviceType &&
+            d.description === demandInput.description &&
+            Date.now() - new Date(d.createdAt).getTime() < 60_000
+        );
+        if (duplicate) {
+          return duplicate as T;
+        }
+
         const newDemand: DemandResponse = {
           id: String(mockDemands.length + 1),
           contractorId: "current_user",
@@ -91,8 +101,38 @@ export function useMockRpc() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
-        mockDemands.push(newDemand);
+        mockDemands.unshift(newDemand);
         return newDemand as T;
+      }
+
+      case "demands.update": {
+        const updateInput = input as { id: string; status?: DemandStatus } & Partial<CreateDemandInput>;
+        const index = mockDemands.findIndex((d) => d.id === updateInput.id);
+        if (index < 0) {
+          throw new Error("Demanda nao encontrada");
+        }
+        const { id: _id, ...fields } = updateInput;
+        mockDemands[index] = {
+          ...mockDemands[index],
+          ...fields,
+          updatedAt: new Date().toISOString(),
+        };
+        return mockDemands[index] as T;
+      }
+
+      case "identity.updateRoles":
+        return {
+          clerkUserId: "current_user",
+          isContractor: true,
+          isProvider: (input as { isProvider?: boolean })?.isProvider ?? true,
+        } as T;
+
+      case "identity.updateProviderProfile":
+        return {
+          clerkUserId: "current_user",
+          isProvider: true,
+          serviceCategories: (input as { serviceCategories?: string[] })?.serviceCategories ?? [],
+        } as T;
 
       default:
         throw new Error(`Procedure ${procedure} not implemented in mock`);
