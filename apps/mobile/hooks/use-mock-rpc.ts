@@ -29,10 +29,12 @@ const mockProviders: ProviderResult[] = [
   },
 ];
 
+const MOCK_USER_ID = "current_user";
+
 const mockDemands: DemandResponse[] = [
   {
-    id: "1",
-    contractorId: "current_user",
+    id: "a1111111-1111-4111-8111-111111111111",
+    contractorId: MOCK_USER_ID,
     serviceType: "Capina de Terreno",
     description: "Preciso de capina em um terreno de 500m². Mato alto e precisa de limpeza completa antes do inverno.",
     municipality: "Concórdia",
@@ -45,8 +47,8 @@ const mockDemands: DemandResponse[] = [
     visibilityRadius: 10,
   },
   {
-    id: "2",
-    contractorId: "current_user",
+    id: "a2222222-2222-4222-8222-222222222222",
+    contractorId: MOCK_USER_ID,
     serviceType: "Diarista",
     description: "Busco diarista para limpeza semanal de casa de 3 quartos. Trabalho leve e organizado.",
     municipality: "Concórdia",
@@ -94,8 +96,8 @@ export function useMockRpc() {
         }
 
         const newDemand: DemandResponse = {
-          id: String(mockDemands.length + 1),
-          contractorId: "current_user",
+          id: `a0000000-0000-4000-8000-${String(mockDemands.length + 1).padStart(12, "0")}`,
+          contractorId: MOCK_USER_ID,
           ...demandInput,
           status: "aberta",
           createdAt: new Date().toISOString(),
@@ -111,6 +113,12 @@ export function useMockRpc() {
         if (index < 0) {
           throw new Error("Demanda nao encontrada");
         }
+        if (mockDemands[index].contractorId !== MOCK_USER_ID) {
+          throw new Error("Apenas quem criou a demanda pode edita-la");
+        }
+        if (mockDemands[index].status === "encerrada" && !updateInput.status) {
+          throw new Error("Demanda encerrada nao pode ser editada");
+        }
         const { id: _id, ...fields } = updateInput;
         mockDemands[index] = {
           ...mockDemands[index],
@@ -118,6 +126,22 @@ export function useMockRpc() {
           updatedAt: new Date().toISOString(),
         };
         return mockDemands[index] as T;
+      }
+
+      case "demands.delete": {
+        const { id } = input as { id: string };
+        const index = mockDemands.findIndex((d) => d.id === id);
+        if (index < 0) {
+          throw new Error("Demanda nao encontrada");
+        }
+        if (mockDemands[index].contractorId !== MOCK_USER_ID) {
+          throw new Error("Apenas quem criou a demanda pode remove-la");
+        }
+        if (mockDemands[index].status !== "encerrada") {
+          throw new Error("Apenas demandas encerradas podem ser excluidas");
+        }
+        mockDemands.splice(index, 1);
+        return { deleted: true, id } as T;
       }
 
       case "identity.updateRoles":

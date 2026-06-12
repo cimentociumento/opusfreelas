@@ -1,21 +1,48 @@
-import { useEffect, useState } from "react";
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  ScrollView, 
-  TouchableOpacity, 
+import { useEffect, useRef, useState } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
   ActivityIndicator,
   Alert,
-  TextInput
+  TextInput,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import {
+  DemandResponse,
+  demandUrgencySchema,
+  updateDemandRpcSchema,
+  type DemandUrgency,
+} from "@amauc/shared";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
-import { DemandResponse, demandUrgencySchema, demandStatusSchema } from "@amauc/shared";
+import { Button, theme } from "../../../components";
 
 function paramToString(value: string | string[] | undefined): string | undefined {
   if (value == null) return undefined;
   return Array.isArray(value) ? value[0] : value;
+}
+
+type EditForm = {
+  serviceType: string;
+  description: string;
+  municipality: string;
+  urgency: DemandUrgency;
+  visibilityRadius: number;
+  latitude: number;
+  longitude: number;
+};
+
+function toEditForm(demand: DemandResponse): EditForm {
+  return {
+    serviceType: demand.serviceType,
+    description: demand.description,
+    municipality: demand.municipality,
+    urgency: demand.urgency,
+    visibilityRadius: demand.visibilityRadius,
+    latitude: demand.latitude,
+    longitude: demand.longitude,
+  };
 }
 
 export default function DemandDetailsScreen() {
@@ -23,12 +50,14 @@ export default function DemandDetailsScreen() {
   const id = paramToString(idParam);
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
-  
+
   const [demand, setDemand] = useState<DemandResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<any>(null);
+  const [editForm, setEditForm] = useState<EditForm | null>(null);
+  const isDeletingRef = useRef(false);
 
   useEffect(() => {
     if (!id) {
@@ -47,13 +76,12 @@ export default function DemandDetailsScreen() {
         const found = demands.find((d) => d.id === id);
         if (found) {
           setDemand(found);
-          setEditForm(found);
+          setEditForm(toEditForm(found));
         } else {
           Alert.alert("Erro", "Demanda nao encontrada.");
           router.back();
         }
-      } catch (error) {
-        console.error("Error loading demand:", error);
+      } catch {
         if (!cancelled) {
           Alert.alert("Erro", "Nao foi possivel carregar a demanda.");
           router.back();
@@ -67,17 +95,23 @@ export default function DemandDetailsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, callRpc]);
+  }, [id, callRpc, router]);
 
   const handleSave = async () => {
-    if (!id) return;
+    if (!id || !editForm) return;
+
+    const parsed = updateDemandRpcSchema.safeParse({ id, ...editForm });
+    if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0];
+      Alert.alert("Erro", firstIssue?.message ?? "Verifique os campos da demanda.");
+      return;
+    }
+
     setSaving(true);
     try {
-      const updated = await callRpc<DemandResponse>("demands.update", {
-        id,
-        ...editForm
-      });
+      const updated = await callRpc<DemandResponse>("demands.update", parsed.data);
       setDemand(updated);
+      setEditForm(toEditForm(updated));
       setIsEditing(false);
       Alert.alert("Sucesso", "Demanda atualizada!");
     } catch (error: any) {
@@ -90,23 +124,53 @@ export default function DemandDetailsScreen() {
   const handleCloseDemand = () => {
     Alert.alert(
       "Encerrar Demanda",
-      "Tem certeza que deseja encerrar esta demanda? Ela não será mais visível para prestadores.",
+      "Tem certeza? Ela nao sera mais visivel para prestadores.",
       [
         { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Encerrar", 
+        {
+          text: "Encerrar",
           style: "destructive",
           onPress: async () => {
             if (!id) return;
             try {
-              const updated = await callRpc<DemandResponse>("demands.update", { id, status: "encerrada" });
+              const updated = await callRpc<DemandResponse>("demands.update", {
+                id,
+                status: "encerrada",
+              });
               setDemand(updated);
               Alert.alert("Sucesso", "Demanda encerrada.");
             } catch (error: any) {
               Alert.alert("Erro", error.message);
             }
-          }
-        }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Excluir Demanda",
+      "Esta ação é irreversível.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: async () => {
+            if (!id || isDeletingRef.current) return;
+            isDeletingRef.current = true;
+            setDeleting(true);
+            try {
+              await callRpc("demands.delete", { id });
+              router.replace("/demands");
+            } catch (error: any) {
+              isDeletingRef.current = false;
+              setDeleting(false);
+              Alert.alert("Erro", error.message);
+            }
+          },
+        },
       ]
     );
   };
@@ -114,17 +178,19 @@ export default function DemandDetailsScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#116530" />
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
-  if (!demand) return null;
+  if (!demand || !editForm) return null;
+
+  const canEdit = demand.status !== "encerrada";
 
   return (
     <ScrollView style={styles.container}>
       <Stack.Screen options={{ title: isEditing ? "Editar Demanda" : "Detalhes da Demanda" }} />
-      
+
       <View style={styles.card}>
         <View style={styles.header}>
           <View style={[styles.statusBadge, styles[`status_${demand.status}`]]}>
@@ -135,62 +201,121 @@ export default function DemandDetailsScreen() {
 
         {isEditing ? (
           <View style={styles.form}>
-            <Text style={styles.label}>Tipo de Serviço</Text>
+            <Text style={styles.label}>Tipo de Servico</Text>
             <TextInput
               style={styles.input}
               value={editForm.serviceType}
               onChangeText={(text) => setEditForm({ ...editForm, serviceType: text })}
+              editable={!saving}
             />
 
-            <Text style={styles.label}>Descrição</Text>
+            <Text style={styles.label}>Descricao</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
               multiline
               value={editForm.description}
               onChangeText={(text) => setEditForm({ ...editForm, description: text })}
+              editable={!saving}
+            />
+            <Text style={styles.helperText}>{editForm.description.length}/30 caracteres minimos</Text>
+
+            <Text style={styles.label}>Municipio</Text>
+            <TextInput
+              style={styles.input}
+              value={editForm.municipality}
+              onChangeText={(text) => setEditForm({ ...editForm, municipality: text })}
+              editable={!saving}
             />
 
+            <Text style={styles.label}>Urgencia</Text>
+            <View style={styles.chipRow}>
+              {demandUrgencySchema.options.map((u) => (
+                <Button
+                  key={u}
+                  title={u.replace("_", " ")}
+                  variant={editForm.urgency === u ? "primary" : "outline"}
+                  size="sm"
+                  style={styles.chip}
+                  onPress={() => setEditForm({ ...editForm, urgency: u })}
+                  disabled={saving}
+                />
+              ))}
+            </View>
+
+            <Text style={styles.label}>Raio de busca: {editForm.visibilityRadius}km</Text>
+            <View style={styles.chipRow}>
+              {[5, 10, 20, 50].map((r) => (
+                <Button
+                  key={r}
+                  title={`${r}km`}
+                  variant={editForm.visibilityRadius === r ? "primary" : "outline"}
+                  size="sm"
+                  style={styles.chip}
+                  onPress={() => setEditForm({ ...editForm, visibilityRadius: r })}
+                  disabled={saving}
+                />
+              ))}
+            </View>
+
             <View style={styles.editActions}>
-              <TouchableOpacity 
-                style={[styles.button, styles.cancelButton]} 
-                onPress={() => setIsEditing(false)}
-              >
-                <Text style={styles.buttonText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.button, styles.saveButton]} 
-                onPress={handleSave}
+              <Button
+                title="Cancelar"
+                variant="outline"
+                onPress={() => {
+                  setEditForm(toEditForm(demand));
+                  setIsEditing(false);
+                }}
                 disabled={saving}
-              >
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Salvar</Text>}
-              </TouchableOpacity>
+                style={styles.actionFlex}
+              />
+              <Button
+                title={saving ? "Salvando..." : "Salvar"}
+                variant="primary"
+                onPress={handleSave}
+                loading={saving}
+                disabled={saving}
+                style={styles.actionFlex}
+              />
             </View>
           </View>
         ) : (
           <View>
             <Text style={styles.title}>{demand.serviceType}</Text>
             <Text style={styles.description}>{demand.description}</Text>
-            
+
             <View style={styles.infoGrid}>
-              <InfoItem label="Município" value={demand.municipality} />
-              <InfoItem label="Urgência" value={demand.urgency} />
+              <InfoItem label="Municipio" value={demand.municipality} />
+              <InfoItem label="Urgencia" value={demand.urgency.replace("_", " ")} />
               <InfoItem label="Visibilidade" value={`${demand.visibilityRadius}km`} />
             </View>
 
-            {demand.status !== "encerrada" && (
+            {canEdit && (
               <View style={styles.actions}>
-                <TouchableOpacity 
-                  style={[styles.actionBtn, styles.editBtn]}
+                <Button
+                  title="Editar"
+                  variant="primary"
                   onPress={() => setIsEditing(true)}
-                >
-                  <Text style={styles.actionBtnText}>Editar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.actionBtn, styles.closeBtn]}
+                  style={styles.actionFlex}
+                />
+                <Button
+                  title="Encerrar"
+                  variant="outline"
                   onPress={handleCloseDemand}
-                >
-                  <Text style={[styles.actionBtnText, { color: "#d32f2f" }]}>Encerrar</Text>
-                </TouchableOpacity>
+                  style={styles.actionFlex}
+                />
+              </View>
+            )}
+
+            {demand.status === "encerrada" && (
+              <View style={styles.deleteSection}>
+                <Button
+                  title={deleting ? "Excluindo..." : "Excluir"}
+                  variant="ghost"
+                  onPress={handleDelete}
+                  disabled={deleting}
+                  loading={deleting}
+                  textStyle={styles.deleteText}
+                />
               </View>
             )}
           </View>
@@ -212,7 +337,7 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: theme.colors.background,
   },
   center: {
     flex: 1,
@@ -220,138 +345,123 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   card: {
-    backgroundColor: "#fff",
-    margin: 16,
-    borderRadius: 16,
-    padding: 20,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    backgroundColor: theme.colors.surface,
+    margin: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    ...theme.shadows.md,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
   statusBadge: {
     paddingVertical: 4,
     paddingHorizontal: 10,
-    borderRadius: 8,
+    borderRadius: theme.borderRadius.sm,
   },
-  status_aberta: { backgroundColor: "#e8f5e9" },
-  status_em_contato: { backgroundColor: "#fff3e0" },
-  status_encerrada: { backgroundColor: "#f5f5f5" },
+  status_aberta: { backgroundColor: theme.colors.primaryLight },
+  status_em_contato: { backgroundColor: theme.colors.secondaryLight },
+  status_encerrada: { backgroundColor: theme.colors.border },
   statusText: {
-    fontSize: 12,
+    ...theme.typography.caption,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   date: {
-    fontSize: 12,
-    color: "#999",
+    ...theme.typography.caption,
+    color: theme.colors.textLight,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#116530",
-    marginBottom: 12,
+    ...theme.typography.h2,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.sm,
   },
   description: {
-    fontSize: 16,
-    color: "#444",
+    ...theme.typography.body1,
+    color: theme.colors.textSecondary,
     lineHeight: 24,
-    marginBottom: 24,
+    marginBottom: theme.spacing.lg,
   },
   infoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: "#eee",
-    paddingVertical: 16,
-    marginBottom: 24,
+    borderColor: theme.colors.border,
+    paddingVertical: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   infoItem: {
     width: "50%",
-    marginBottom: 12,
+    marginBottom: theme.spacing.sm,
   },
   infoLabel: {
-    fontSize: 12,
-    color: "#999",
+    ...theme.typography.caption,
+    color: theme.colors.textLight,
     marginBottom: 2,
   },
   infoValue: {
-    fontSize: 14,
+    ...theme.typography.body2,
     fontWeight: "600",
-    color: "#333",
+    color: theme.colors.text,
     textTransform: "capitalize",
   },
   actions: {
     flexDirection: "row",
-    gap: 12,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
-  actionBtn: {
+  actionFlex: {
     flex: 1,
-    padding: 12,
-    borderRadius: 8,
+  },
+  deleteSection: {
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: theme.spacing.md,
   },
-  editBtn: {
-    backgroundColor: "#116530",
-    borderColor: "#116530",
-  },
-  closeBtn: {
-    backgroundColor: "#fff",
-    borderColor: "#d32f2f",
-  },
-  actionBtnText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#fff",
+  deleteText: {
+    color: theme.colors.error,
   },
   form: {
-    gap: 12,
+    gap: theme.spacing.sm,
   },
   label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
+    ...theme.typography.body2,
+    fontWeight: "700",
+    color: theme.colors.text,
+    marginTop: theme.spacing.sm,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
+    borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    ...theme.typography.body1,
+    backgroundColor: theme.colors.surface,
   },
   textArea: {
     height: 120,
     textAlignVertical: "top",
   },
+  helperText: {
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.sm,
+  },
+  chip: {
+    minWidth: 72,
+  },
   editActions: {
     flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
-  },
-  button: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  cancelButton: {
-    backgroundColor: "#999",
-  },
-  saveButton: {
-    backgroundColor: "#116530",
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "700",
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.lg,
   },
 });

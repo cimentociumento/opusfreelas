@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useDevelopmentMode } from "../../../hooks/use-development-mode";
 import {
   CreateDemandInput,
   DemandResponse,
@@ -20,6 +21,7 @@ import { Card, Button, theme } from "../../../components";
 export default function CreateDemandScreen() {
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
+  const { isDevMode, enterDevSession } = useDevelopmentMode();
   const isSubmittingRef = useRef(false);
   
   const [loading, setLoading] = useState(false);
@@ -48,8 +50,8 @@ export default function CreateDemandScreen() {
 
     try {
       await callRpc<DemandResponse>("demands.create", parsed.data);
-      if (router.canDismiss()) {
-        router.dismissAll();
+      if (isDevMode) {
+        await enterDevSession();
       }
       router.replace("/");
     } catch (error: any) {

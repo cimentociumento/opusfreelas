@@ -1,11 +1,9 @@
 import { useAuth } from "@clerk/clerk-expo";
-import { Stack, useRouter } from "expo-router";
+import { Link, Stack } from "expo-router";
 import { StyleSheet, Text, View, ScrollView } from "react-native";
 import { Button, Card, DevModeToggle, DevAuthWrapper, theme } from "../components";
 
 export default function HomeScreen() {
-  const router = useRouter();
-
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -23,12 +21,9 @@ export default function HomeScreen() {
                 <Text style={styles.authSubtitle}>
                   Encontre os melhores profissionais para serviços manuais e rurais na região da AMAUC
                 </Text>
-                <Button
-                  title="Entrar e Começar"
-                  variant="primary"
-                  size="lg"
-                  onPress={() => router.push("/sign-in")}
-                />
+                <Link href="/sign-in" asChild>
+                  <Button title="Entrar e Começar" variant="primary" size="lg" onPress={() => {}} />
+                </Link>
               </Card>
             </View>
           }
@@ -46,7 +41,6 @@ export default function HomeScreen() {
 
 function SignedInContent() {
   const { signOut } = useAuth();
-  const router = useRouter();
 
   return (
     <View style={styles.content}>
@@ -62,40 +56,48 @@ function SignedInContent() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>🏠 Sou Contratante</Text>
         <Card variant="elevated" style={styles.actionCard}>
-          <Button
-            title="🔍 Encontrar Profissionais"
-            variant="primary"
-            size="lg"
-            style={styles.actionButton}
-            onPress={() => router.push("/discovery")}
-          />
-          <Button
-            title="📝 Publicar Demanda"
-            variant="secondary"
-            size="md"
-            style={styles.actionButton}
-            onPress={() => router.push("/demands/create")}
-          />
-          <Button
-            title="📋 Minhas Demandas"
-            variant="outline"
-            size="md"
-            style={styles.actionButton}
-            onPress={() => router.push("/demands")}
-          />
+          <Link href="/discovery" asChild>
+            <Button
+              title="🔍 Encontrar Profissionais"
+              variant="primary"
+              size="lg"
+              style={styles.actionButton}
+              onPress={() => {}}
+            />
+          </Link>
+          <Link href="/demands/create" asChild>
+            <Button
+              title="📝 Publicar Demanda"
+              variant="secondary"
+              size="md"
+              style={styles.actionButton}
+              onPress={() => {}}
+            />
+          </Link>
+          <Link href="/demands" asChild>
+            <Button
+              title="📋 Minhas Demandas"
+              variant="outline"
+              size="md"
+              style={styles.actionButton}
+              onPress={() => {}}
+            />
+          </Link>
         </Card>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>👨‍🔧 Sou Prestador</Text>
         <Card variant="elevated" style={styles.actionCard}>
-          <Button
-            title="⚙️ Configurar Meu Perfil"
-            variant="primary"
-            size="lg"
-            style={styles.actionButton}
-            onPress={() => router.push("/profile/provider-setup")}
-          />
+          <Link href="/profile/provider-setup" asChild>
+            <Button
+              title="⚙️ Configurar Meu Perfil"
+              variant="primary"
+              size="lg"
+              style={styles.actionButton}
+              onPress={() => {}}
+            />
+          </Link>
         </Card>
       </View>
 
