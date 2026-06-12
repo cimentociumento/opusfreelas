@@ -158,7 +158,8 @@ export const demandHandlers = {
       );
     }
 
-    if (ownership.existing.status === "encerrada" && !updateData.status) {
+    const isClosed = ["concluida", "cancelada", "encerrada"].includes(ownership.existing.status);
+    if (isClosed && !updateData.status) {
       return c.json({ error: "Cannot edit closed demand" }, 400);
     }
 
@@ -216,7 +217,8 @@ export const demandHandlers = {
       );
     }
 
-    if (ownership.existing.status !== "encerrada") {
+    const isClosed = ["concluida", "cancelada", "encerrada"].includes(ownership.existing.status);
+    if (!isClosed) {
       return c.json({ error: "Cannot delete open demand", reason: "Close the demand before deleting" }, 400);
     }
 
