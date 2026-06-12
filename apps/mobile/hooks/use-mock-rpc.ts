@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { ProviderResult, DemandResponse, CreateDemandInput, DemandStatus } from "@amauc/shared";
+import { DEV_MOCK_USER_ID } from "../lib/auth-constants";
 
 // Mock data para demonstração
 const mockProviders: ProviderResult[] = [
@@ -29,7 +30,10 @@ const mockProviders: ProviderResult[] = [
   },
 ];
 
-const MOCK_USER_ID = "current_user";
+const MOCK_USER_ID = DEV_MOCK_USER_ID;
+
+const DUPLICATE_WINDOW_MS = 5_000;
+let createInFlight = false;
 
 const mockDemands: DemandResponse[] = [
   {
@@ -60,6 +64,20 @@ const mockDemands: DemandResponse[] = [
     longitude: -52.01,
     visibilityRadius: 5,
   },
+  {
+    id: "a3333333-3333-4333-8333-333333333333",
+    contractorId: MOCK_USER_ID,
+    serviceType: "Pintura Externa",
+    description: "Preciso pintar muro e portão de ferro. Serviço já encerrado após contratação do profissional.",
+    municipality: "Concórdia",
+    urgency: "baixa",
+    status: "encerrada",
+    createdAt: new Date(Date.now() - 86_400_000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    latitude: -27.25,
+    longitude: -52.03,
+    visibilityRadius: 10,
+  },
 ];
 
 export function useMockRpc() {
@@ -84,27 +102,39 @@ export function useMockRpc() {
         return mockDemands as T;
 
       case "demands.create": {
+        if (createInFlight) {
+          throw new Error("Duplicate demand — publicação já em andamento");
+        }
+
         const demandInput = input as CreateDemandInput;
         const duplicate = mockDemands.find(
           (d) =>
+            d.contractorId === MOCK_USER_ID &&
             d.serviceType === demandInput.serviceType &&
             d.description === demandInput.description &&
-            Date.now() - new Date(d.createdAt).getTime() < 60_000
+            Date.now() - new Date(d.createdAt).getTime() < DUPLICATE_WINDOW_MS
         );
         if (duplicate) {
-          return duplicate as T;
+          const err = new Error("Duplicate demand — demanda idêntica criada recentemente");
+          (err as Error & { status?: number }).status = 409;
+          throw err;
         }
 
-        const newDemand: DemandResponse = {
-          id: `a0000000-0000-4000-8000-${String(mockDemands.length + 1).padStart(12, "0")}`,
-          contractorId: MOCK_USER_ID,
-          ...demandInput,
-          status: "aberta",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        mockDemands.unshift(newDemand);
-        return newDemand as T;
+        createInFlight = true;
+        try {
+          const newDemand: DemandResponse = {
+            id: `a0000000-0000-4000-8000-${String(mockDemands.length + 1).padStart(12, "0")}`,
+            contractorId: MOCK_USER_ID,
+            ...demandInput,
+            status: "aberta",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          mockDemands.unshift(newDemand);
+          return newDemand as T;
+        } finally {
+          createInFlight = false;
+        }
       }
 
       case "demands.update": {
