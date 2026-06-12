@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
-import { useDevelopmentMode } from "../../../hooks/use-development-mode";
 import {
   CreateDemandInput,
   DemandResponse,
@@ -21,7 +20,6 @@ import { Card, Button, theme } from "../../../components";
 export default function CreateDemandScreen() {
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
-  const { isDevMode, enterDevSession } = useDevelopmentMode();
   const isSubmittingRef = useRef(false);
   
   const [loading, setLoading] = useState(false);
@@ -50,14 +48,21 @@ export default function CreateDemandScreen() {
 
     try {
       await callRpc<DemandResponse>("demands.create", parsed.data);
-      if (isDevMode) {
-        await enterDevSession();
-      }
       router.replace("/");
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro desconhecido";
+      const isDuplicate =
+        message.toLowerCase().includes("duplicate") ||
+        message.toLowerCase().includes("duplicat");
+
+      if (isDuplicate) {
+        router.replace("/");
+        return;
+      }
+
       isSubmittingRef.current = false;
       setLoading(false);
-      Alert.alert("Erro ao publicar", error.message);
+      Alert.alert("Erro ao publicar", message);
     }
   };
 
@@ -117,6 +122,7 @@ export default function CreateDemandScreen() {
                 size="sm"
                 style={styles.urgencyChip}
                 onPress={() => setForm({ ...form, urgency: u })}
+                disabled={loading}
               />
             ))}
           </View>
@@ -131,29 +137,21 @@ export default function CreateDemandScreen() {
                 size="sm"
                 style={styles.radiusChip}
                 onPress={() => setForm({ ...form, visibilityRadius: r })}
+                disabled={loading}
               />
             ))}
           </View>
         </Card>
 
-        <View style={styles.actionArea} pointerEvents={loading ? "none" : "auto"}>
-          {loading ? (
-            <Button
-              title="Publicando..."
-              variant="primary"
-              size="lg"
-              onPress={() => {}}
-              disabled
-              loading
-            />
-          ) : (
-            <Button
-              title="🚀 Publicar Demanda"
-              variant="primary"
-              size="lg"
-              onPress={handleSubmit}
-            />
-          )}
+        <View style={styles.actionArea}>
+          <Button
+            title={loading ? "Publicando…" : "🚀 Publicar Demanda"}
+            variant="primary"
+            size="lg"
+            onPress={handleSubmit}
+            disabled={loading}
+            loading={loading}
+          />
         </View>
       </View>
     </ScrollView>
