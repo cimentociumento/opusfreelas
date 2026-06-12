@@ -146,7 +146,8 @@ export function useMockRpc() {
         if (mockDemands[index].contractorId !== MOCK_USER_ID) {
           throw new Error("Apenas quem criou a demanda pode edita-la");
         }
-        if (mockDemands[index].status === "encerrada" && !updateInput.status) {
+        const isClosed = ["concluida", "cancelada", "encerrada"].includes(mockDemands[index].status);
+        if (isClosed && !updateInput.status) {
           throw new Error("Demanda encerrada nao pode ser editada");
         }
         const { id: _id, ...fields } = updateInput;
@@ -167,7 +168,8 @@ export function useMockRpc() {
         if (mockDemands[index].contractorId !== MOCK_USER_ID) {
           throw new Error("Apenas quem criou a demanda pode remove-la");
         }
-        if (mockDemands[index].status !== "encerrada") {
+        const isClosed = ["concluida", "cancelada", "encerrada"].includes(mockDemands[index].status);
+        if (!isClosed) {
           throw new Error("Apenas demandas encerradas podem ser excluidas");
         }
         mockDemands.splice(index, 1);
