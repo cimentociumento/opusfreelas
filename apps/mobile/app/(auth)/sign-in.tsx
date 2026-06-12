@@ -18,7 +18,7 @@ export default function SignInScreen() {
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
   const [phoneInput, setPhoneInput] = useState("");
   const [code, setCode] = useState("");
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<"signIn" | "signUp" | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +43,7 @@ export default function SignInScreen() {
           strategy: "phone_code",
           phoneNumberId: phoneFactor.phoneNumberId,
         });
-        setSent(true);
+        setSent("signIn");
         return;
       }
       throw new Error("Fator telefone indisponivel apos create.");
@@ -51,7 +51,7 @@ export default function SignInScreen() {
       try {
         await signUp.create({ phoneNumber: phone });
         await signUp.preparePhoneNumberVerification({ strategy: "phone_code" });
-        setSent(true);
+        setSent("signUp");
       } catch (innerError) {
         setError((innerError as Error).message ?? "N\u00e3o foi poss\u00edvel enviar o c\u00f3digo.");
       }
@@ -66,22 +66,24 @@ export default function SignInScreen() {
     setError(null);
 
     try {
-      const signInResult = await signIn.attemptFirstFactor({
-        strategy: "phone_code",
-        code,
-      });
+      if (sent === "signIn") {
+        const signInResult = await signIn.attemptFirstFactor({
+          strategy: "phone_code",
+          code,
+        });
 
-      if (signInResult.status === "complete") {
-        await setActive?.({ session: signInResult.createdSessionId });
-        router.replace("/");
-        return;
-      }
-
-      const signUpResult = await signUp.attemptPhoneNumberVerification({ code });
-      if (signUpResult.status === "complete") {
-        await setActive?.({ session: signUpResult.createdSessionId });
-        router.replace("/");
-        return;
+        if (signInResult.status === "complete") {
+          await setActive?.({ session: signInResult.createdSessionId });
+          router.replace("/");
+          return;
+        }
+      } else if (sent === "signUp") {
+        const signUpResult = await signUp.attemptPhoneNumberVerification({ code });
+        if (signUpResult.status === "complete") {
+          await setActive?.({ session: signUpResult.createdSessionId });
+          router.replace("/");
+          return;
+        }
       }
 
       setError("C\u00f3digo inv\u00e1lido ou expirado.");
