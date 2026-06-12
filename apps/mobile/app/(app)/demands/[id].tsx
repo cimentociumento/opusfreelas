@@ -16,6 +16,8 @@ import {
   type DemandUrgency,
 } from "@amauc/shared";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
+import { isDemandOwner } from "../../../lib/auth-constants";
 import { Button, theme } from "../../../components";
 
 function paramToString(value: string | string[] | undefined): string | undefined {
@@ -50,6 +52,7 @@ export default function DemandDetailsScreen() {
   const id = paramToString(idParam);
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
+  const { userId: currentUserId, isReady: isAuthReady } = useEffectiveUserId();
 
   const [demand, setDemand] = useState<DemandResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -114,8 +117,9 @@ export default function DemandDetailsScreen() {
       setEditForm(toEditForm(updated));
       setIsEditing(false);
       Alert.alert("Sucesso", "Demanda atualizada!");
-    } catch (error: any) {
-      Alert.alert("Erro", error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro ao salvar.";
+      Alert.alert("Erro", message);
     } finally {
       setSaving(false);
     }
@@ -139,8 +143,9 @@ export default function DemandDetailsScreen() {
               });
               setDemand(updated);
               Alert.alert("Sucesso", "Demanda encerrada.");
-            } catch (error: any) {
-              Alert.alert("Erro", error.message);
+            } catch (error: unknown) {
+              const message = error instanceof Error ? error.message : "Erro ao encerrar.";
+              Alert.alert("Erro", message);
             }
           },
         },
@@ -164,10 +169,11 @@ export default function DemandDetailsScreen() {
             try {
               await callRpc("demands.delete", { id });
               router.replace("/demands");
-            } catch (error: any) {
+            } catch (error: unknown) {
               isDeletingRef.current = false;
               setDeleting(false);
-              Alert.alert("Erro", error.message);
+              const message = error instanceof Error ? error.message : "Erro ao excluir.";
+              Alert.alert("Erro", message);
             }
           },
         },
@@ -185,7 +191,9 @@ export default function DemandDetailsScreen() {
 
   if (!demand || !editForm) return null;
 
-  const canEdit = demand.status !== "encerrada";
+  const isOwner = isAuthReady && isDemandOwner(demand.contractorId, currentUserId);
+  const canEdit = isOwner && demand.status !== "encerrada";
+  const canDelete = isOwner && demand.status === "encerrada";
 
   return (
     <ScrollView style={styles.container}>
@@ -306,7 +314,7 @@ export default function DemandDetailsScreen() {
               </View>
             )}
 
-            {demand.status === "encerrada" && (
+            {canDelete && (
               <View style={styles.deleteSection}>
                 <Button
                   title={deleting ? "Excluindo..." : "Excluir"}
