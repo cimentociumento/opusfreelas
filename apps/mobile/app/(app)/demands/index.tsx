@@ -4,18 +4,17 @@ import {
   Text, 
   View, 
   FlatList, 
-  TouchableOpacity,
   ActivityIndicator,
   RefreshControl
 } from "react-native";
-import { Stack, Link, useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { DemandResponse } from "@amauc/shared";
 import { Card, Button, theme } from "../../../components";
 
 export default function MyDemandsScreen() {
   const router = useRouter();
-  const { callRpc, isDevMode } = useRpcWithDevMode();
+  const { callRpc } = useRpcWithDevMode();
   
   const [demands, setDemands] = useState<DemandResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,42 +43,40 @@ export default function MyDemandsScreen() {
 
   const renderItem = ({ item }: { item: DemandResponse }) => (
     <Card variant="elevated" style={styles.demandCard}>
-      <TouchableOpacity onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}>
-        <View style={styles.demandHeader}>
-          <Text style={styles.serviceType}>{item.serviceType}</Text>
-          <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
-            <Text style={styles.statusText}>{getStatusDisplay(item.status)}</Text>
-          </View>
+      <View style={styles.demandHeader}>
+        <Text style={styles.serviceType}>{item.serviceType}</Text>
+        <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
+          <Text style={styles.statusText}>{getStatusDisplay(item.status)}</Text>
         </View>
-        
-        <Text style={styles.description} numberOfLines={2}>
-          {item.description}
-        </Text>
-        
-        <View style={styles.demandFooter}>
-          <Text style={styles.footerText}>📍 {item.municipality}</Text>
-          <Text style={styles.footerText}>⚡ {getUrgencyDisplay(item.urgency)}</Text>
-        </View>
-        
-        <View style={styles.actions}>
-          <Button 
-            title="Ver Detalhes" 
-            variant="primary" 
+      </View>
+
+      <Text style={styles.description} numberOfLines={2}>
+        {item.description}
+      </Text>
+
+      <View style={styles.demandFooter}>
+        <Text style={styles.footerText}>📍 {item.municipality}</Text>
+        <Text style={styles.footerText}>⚡ {getUrgencyDisplay(item.urgency)}</Text>
+      </View>
+
+      <View style={styles.actions}>
+        <Button
+          title="Ver Detalhes"
+          variant="primary"
+          size="sm"
+          style={styles.actionBtn}
+          onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}
+        />
+        {item.status !== "encerrada" && (
+          <Button
+            title="Editar"
+            variant="outline"
             size="sm"
             style={styles.actionBtn}
             onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}
           />
-          {item.status === "aberta" && (
-            <Button 
-              title="Editar" 
-              variant="outline" 
-              size="sm"
-              style={styles.actionBtn}
-              onPress={() => {}}
-            />
-          )}
-        </View>
-      </TouchableOpacity>
+        )}
+      </View>
     </Card>
   );
 
@@ -140,14 +137,12 @@ export default function MyDemandsScreen() {
               <Text style={styles.emptySubtitle}>
                 Comece publicando sua primeira demanda para encontrar profissionais
               </Text>
-              <Link href="/demands/create" asChild>
-                <Button 
-                  title="🚀 Publicar Primeira Demanda" 
-                  variant="primary" 
-                  size="lg"
-                  onPress={() => {}}
-                />
-              </Link>
+              <Button
+                title="🚀 Publicar Primeira Demanda"
+                variant="primary"
+                size="lg"
+                onPress={() => router.push("/demands/create")}
+              />
             </Card>
           }
         />

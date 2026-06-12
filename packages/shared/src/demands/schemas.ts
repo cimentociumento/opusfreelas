@@ -24,6 +24,18 @@ export const updateDemandSchema = createDemandSchema.partial().extend({
 
 export type UpdateDemandInput = z.infer<typeof updateDemandSchema>;
 
+export const updateDemandRpcSchema = updateDemandSchema.extend({
+  id: z.string().uuid(),
+});
+
+export type UpdateDemandRpcInput = z.infer<typeof updateDemandRpcSchema>;
+
+export const deleteDemandSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export type DeleteDemandInput = z.infer<typeof deleteDemandSchema>;
+
 export const demandResponseSchema = z.object({
   id: z.string().uuid(),
   contractorId: z.string(),
