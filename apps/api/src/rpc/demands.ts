@@ -49,7 +49,7 @@ async function getOwnedDemand(supabase: ReturnType<typeof getSupabaseAdmin>, id:
   }
 
   if (existing.contractor_id !== userId) {
-    return { error: "forbidden" as const };
+    return { error: "forbidden" as const, reason: "Acesso negado: você não é o autor desta demanda" };
   }
 
   return { existing };
@@ -66,7 +66,7 @@ export const demandHandlers = {
     const { serviceType, description, municipality, latitude, longitude, urgency, visibilityRadius } = parsed.data;
     const supabase = getSupabaseAdmin();
 
-    const duplicateWindowStart = new Date(Date.now() - 60_000).toISOString();
+    const duplicateWindowStart = new Date(Date.now() - 5_000).toISOString();
     const { data: recentDuplicate } = await supabase
       .from("demands")
       .select()
@@ -79,7 +79,14 @@ export const demandHandlers = {
       .maybeSingle();
 
     if (recentDuplicate) {
-      return c.json(mapDemandRow(recentDuplicate));
+      return c.json(
+        {
+          error: "Duplicate demand",
+          reason: "A demand with the same content was created recently",
+          id: recentDuplicate.id,
+        },
+        409
+      );
     }
 
     // Use RPC or raw SQL for PostGIS insertion if possible, 
@@ -142,7 +149,13 @@ export const demandHandlers = {
       return c.json({ error: "Demand not found" }, 404);
     }
     if (ownership.error === "forbidden") {
-      return c.json({ error: "Forbidden", reason: "Only the demand creator can edit" }, 403);
+      return c.json(
+        {
+          error: "Forbidden",
+          reason: ownership.reason ?? "Only the demand creator can edit",
+        },
+        403
+      );
     }
 
     if (ownership.existing.status === "encerrada" && !updateData.status) {
@@ -194,7 +207,13 @@ export const demandHandlers = {
       return c.json({ error: "Demand not found" }, 404);
     }
     if (ownership.error === "forbidden") {
-      return c.json({ error: "Forbidden", reason: "Only the demand creator can delete" }, 403);
+      return c.json(
+        {
+          error: "Forbidden",
+          reason: ownership.reason ?? "Only the demand creator can delete",
+        },
+        403
+      );
     }
 
     if (ownership.existing.status !== "encerrada") {

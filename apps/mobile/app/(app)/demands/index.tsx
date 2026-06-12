@@ -5,16 +5,20 @@ import {
   View, 
   FlatList, 
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  Alert,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
+import { isDemandOwner } from "../../../lib/auth-constants";
 import { DemandResponse } from "@amauc/shared";
 import { Card, Button, theme } from "../../../components";
 
 export default function MyDemandsScreen() {
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
+  const { userId: currentUserId, isReady: isAuthReady } = useEffectiveUserId();
   
   const [demands, setDemands] = useState<DemandResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +45,33 @@ export default function MyDemandsScreen() {
     fetchDemands();
   };
 
-  const renderItem = ({ item }: { item: DemandResponse }) => (
+  const confirmDelete = (demandId: string) => {
+    Alert.alert(
+      "Excluir Demanda",
+      "Esta ação é irreversível.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Excluir",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await callRpc("demands.delete", { id: demandId });
+              setDemands((prev) => prev.filter((d) => d.id !== demandId));
+            } catch (error: unknown) {
+              const message = error instanceof Error ? error.message : "Erro ao excluir demanda.";
+              Alert.alert("Erro", message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderItem = ({ item }: { item: DemandResponse }) => {
+    const isOwner = isAuthReady && isDemandOwner(item.contractorId, currentUserId);
+
+    return (
     <Card variant="elevated" style={styles.demandCard}>
       <View style={styles.demandHeader}>
         <Text style={styles.serviceType}>{item.serviceType}</Text>
@@ -67,7 +97,7 @@ export default function MyDemandsScreen() {
           style={styles.actionBtn}
           onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}
         />
-        {item.status !== "encerrada" && (
+        {isOwner && item.status !== "encerrada" && (
           <Button
             title="Editar"
             variant="outline"
@@ -76,9 +106,20 @@ export default function MyDemandsScreen() {
             onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}
           />
         )}
+        {isOwner && item.status === "encerrada" && (
+          <Button
+            title="Excluir"
+            variant="outline"
+            size="sm"
+            style={styles.actionBtn}
+            onPress={() => confirmDelete(item.id)}
+            textStyle={styles.deleteText}
+          />
+        )}
       </View>
     </Card>
-  );
+    );
+  };
 
   const getStatusDisplay = (status: string) => {
     const statusMap: { [key: string]: string } = {
@@ -219,6 +260,9 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
+  },
+  deleteText: {
+    color: theme.colors.error,
   },
   emptyState: {
     padding: theme.spacing.xl,
