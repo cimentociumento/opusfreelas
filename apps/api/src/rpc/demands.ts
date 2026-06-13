@@ -158,10 +158,8 @@ export const demandHandlers = {
       );
     }
 
-    const isClosed = ["concluida", "cancelada", "encerrada"].includes(ownership.existing.status);
-    if (isClosed && !updateData.status) {
-      return c.json({ error: "Cannot edit closed demand" }, 400);
-    }
+    // Permite editar mesmo se estiver encerrada, facilitando correções retroativas se necessário
+    // mas mantém a lógica de ownership garantida pelo getOwnedDemand e pela query abaixo
 
     const dbUpdate: Record<string, unknown> = {};
     if (updateData.serviceType !== undefined) dbUpdate.service_type = updateData.serviceType;
@@ -217,10 +215,8 @@ export const demandHandlers = {
       );
     }
 
-    const isClosed = ["concluida", "cancelada", "encerrada"].includes(ownership.existing.status);
-    if (!isClosed) {
-      return c.json({ error: "Cannot delete open demand", reason: "Close the demand before deleting" }, 400);
-    }
+    // Permite deletar qualquer demanda do usuário, independente do status
+    // A segurança de ownership já é garantida pelo getOwnedDemand e pela cláusula WHERE no delete
 
     const { error } = await supabase
       .from("demands")
