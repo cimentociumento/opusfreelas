@@ -74,6 +74,9 @@ export default function SignInScreen() {
 
   const [phoneInput, setPhoneInput] = useState("");
   const [code, setCode] = useState("");
+  const [sent, setSent] = useState(false);
+  const [pendingPhone, setPendingPhone] = useState<string | null>(null);
+  const [flowType, setFlowType] = useState<"signIn" | "signUp" | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const verifyingRef = useRef(false);
@@ -112,64 +115,68 @@ export default function SignInScreen() {
       await signUp.update({ legalAccepted: true });
     }
 
-    if (signUp.status === "complete") {
-      await activateClerkSession(signUp.createdSessionId);
-      return;
-    }
+    // if (signUp.status === "complete") {
+    //   await activateClerkSession(signUp.createdSessionId);
+    //   return;
+    // }
 
     throw new Error(`Campos faltando: ${JSON.stringify(signUp.missingFields)}`);
   }
 
   async function sendCode() {
-  if (!loaded || !signIn || !signUp) return;
+    if (!loaded || !signIn || !signUp) return;
 
-  setLoading(true);
-  setError(null);
-  setCode("");
+    setLoading(true);
+    setError(null);
+    setCode("");
 
-  const phone = toBrazilE164(phoneInput);
+    const phone = toBrazilE164(phoneInput);
 
-  try {
-    // 1. Tenta sign-in primeiro
-    await signIn.create({
-      identifier: phone,
-    });
+    try {
+      await signUp.create({
+        phoneNumber: phone,
+        legalAccepted: true, 
+      });
+      await signUp.preparePhoneNumberVerification({ strategy: "phone_code" })
 
-    const phoneFactor = getPhoneCodeFactor(signIn);
-    if (!phoneFactor || !("phoneNumberId" in phoneFactor) || !phoneFactor.phoneNumberId) {
-      throw new Error("Verificacao por SMS indisponivel para este numero.");
-    }
-
-    await signIn.prepareFirstFactor({
-      strategy: "phone_code",
-      phoneNumberId: phoneFactor.phoneNumberId,
-    });
-
-    setPendingPhone(phone);
-    setFlowType("signIn");
-    setSent(true);
-  } catch (sendError) {
-    // 2. Usuário não existe → tenta cadastro
-    if (
-      isClerkAPIResponseError(sendError) &&
-      sendError.errors.some((e) => e.code === "form_identifier_not_found")
-    ) {
-      try {
-        await signUp.create({ phoneNumber: phone, legalAccepted: true });
-        await signUp.preparePhoneNumberVerification({ strategy: "phone_code" });
-        setPendingPhone(phone);
-        setFlowType("signUp");
-        setSent(true);
-      } catch (signUpError) {
-        setError(getErrorMessage(signUpError, "Nao foi possivel criar a conta."));
+      if (signIn.status !== "needs_first_factor") {
+        throw new Error(`Nao foi possivel iniciar a verificacao (${signIn.status ?? "desconhecido"}).`);
       }
-    } else {
-      setError(getErrorMessage(sendError, "Nao foi possivel enviar o codigo."));
+
+      const phoneFactor = getPhoneCodeFactor(signIn);
+      if (!phoneFactor || !("phoneNumberId" in phoneFactor) || !phoneFactor.phoneNumberId) {
+        throw new Error("Verificacao por SMS indisponivel para este numero.");
+      }
+
+      await signIn.prepareFirstFactor({
+        strategy: "phone_code",
+        phoneNumberId: phoneFactor.phoneNumberId,
+      });
+
+      setPendingPhone(phone);
+      setFlowType("signIn");
+      setSent(true);
+    } catch (sendError) {
+      if (
+        isClerkAPIResponseError(sendError) &&
+        sendError.errors.some((e) => e.code === "form_identifier_not_found")
+      ) {
+        try {
+          await signUp.create({ phoneNumber: phone });
+          await signUp.preparePhoneNumberVerification({ strategy: "phone_code" });
+          setPendingPhone(phone);
+          setFlowType("signUp");
+          setSent(true);
+        } catch (signUpError) {
+          setError(getErrorMessage(signUpError, "Nao foi possivel criar a conta."));
+        }
+      } else {
+        setError(getErrorMessage(sendError, "Nao foi possivel enviar o codigo."));
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
   }
-}
 
   async function resendCode() {
     if (!loaded || !pendingPhone) return;
