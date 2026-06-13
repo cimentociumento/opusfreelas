@@ -377,7 +377,7 @@ describe("RPC Features (Demands & Discovery)", () => {
       expect(data.error).toBe("Forbidden");
     });
 
-    it("returns 400 when deleting an open demand", async () => {
+    it("deletes an open demand successfully", async () => {
       const demandId = "a1111111-1111-4111-8111-111111111111";
       const existing = {
         contractor_id: authState.userId,
@@ -388,10 +388,16 @@ describe("RPC Features (Demands & Discovery)", () => {
         const ownershipChain = chainable(() =>
           Promise.resolve({ data: existing, error: null })
         );
+        const deleteChain = chainable(() => Promise.resolve({ error: null }));
         return {
           select: ownershipChain.select,
           eq: ownershipChain.eq,
           single: ownershipChain.single,
+          delete: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: deleteChain.eq,
+            })),
+          })),
         };
       });
 
@@ -407,9 +413,9 @@ describe("RPC Features (Demands & Discovery)", () => {
         }),
       });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(200);
       const data = await res.json();
-      expect(data.error).toBe("Cannot delete open demand");
+      expect(data.deleted).toBe(true);
     });
   });
 

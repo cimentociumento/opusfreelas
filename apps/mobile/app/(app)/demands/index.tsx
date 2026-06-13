@@ -97,24 +97,24 @@ export default function MyDemandsScreen() {
           style={styles.actionBtn}
           onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}
         />
-        {isOwner && item.status !== "encerrada" && (
-          <Button
-            title="Editar"
-            variant="outline"
-            size="sm"
-            style={styles.actionBtn}
-            onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}
-          />
-        )}
-        {isOwner && item.status === "encerrada" && (
-          <Button
-            title="Excluir"
-            variant="outline"
-            size="sm"
-            style={styles.actionBtn}
-            onPress={() => confirmDelete(item.id)}
-            textStyle={styles.deleteText}
-          />
+        {isOwner && (
+          <>
+            <Button
+              title="Editar"
+              variant="outline"
+              size="sm"
+              style={styles.actionBtn}
+              onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}
+            />
+            <Button
+              title="Excluir"
+              variant="outline"
+              size="sm"
+              style={styles.actionBtn}
+              onPress={() => confirmDelete(item.id)}
+              textStyle={styles.deleteText}
+            />
+          </>
         )}
       </View>
     </Card>
