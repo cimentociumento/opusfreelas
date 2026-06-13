@@ -146,10 +146,7 @@ export function useMockRpc() {
         if (mockDemands[index].contractorId !== MOCK_USER_ID) {
           throw new Error("Apenas quem criou a demanda pode edita-la");
         }
-        const isClosed = ["concluida", "cancelada", "encerrada"].includes(mockDemands[index].status);
-        if (isClosed && !updateInput.status) {
-          throw new Error("Demanda encerrada nao pode ser editada");
-        }
+        // Permite editar mesmo se encerrada no mock para paridade com a API real
         const { id: _id, ...fields } = updateInput;
         mockDemands[index] = {
           ...mockDemands[index],
@@ -168,10 +165,7 @@ export function useMockRpc() {
         if (mockDemands[index].contractorId !== MOCK_USER_ID) {
           throw new Error("Apenas quem criou a demanda pode remove-la");
         }
-        const isClosed = ["concluida", "cancelada", "encerrada"].includes(mockDemands[index].status);
-        if (!isClosed) {
-          throw new Error("Apenas demandas encerradas podem ser excluidas");
-        }
+        // Permite deletar qualquer demanda no mock para paridade com a API real
         mockDemands.splice(index, 1);
         return { deleted: true, id } as T;
       }

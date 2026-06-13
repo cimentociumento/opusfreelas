@@ -197,9 +197,8 @@ export default function DemandDetailsScreen() {
   if (!demand || !editForm) return null;
 
   const isOwner = isAuthReady && isDemandOwner(demand.contractorId, currentUserId);
-  const isClosed = ["concluida", "cancelada", "encerrada"].includes(demand.status);
-  const canEdit = isOwner && !isClosed;
-  const canDelete = isOwner && isClosed;
+  const canEdit = isOwner;
+  const canDelete = isOwner;
 
   return (
     <ScrollView style={styles.container}>
