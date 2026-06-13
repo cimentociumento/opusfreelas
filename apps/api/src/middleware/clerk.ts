@@ -33,12 +33,31 @@ export function getAuthUser(c: Context): AuthUser {
 }
 
 export async function requireClerkAuth(c: Context, next: Next) {
+  console.log("DEV_BYPASS_TOKEN:", process.env.DEV_BYPASS_TOKEN); // <- temporário
+  console.log("NODE_ENV:", process.env.NODE_ENV); // <- temporário
+  
   const authorization = c.req.header("authorization") ?? "";
   const [, token] = authorization.match(/^Bearer\s+(.+)$/i) ?? [];
 
   if (!token) {
     return c.json({ error: "Unauthorized" }, 401);
   }
+
+  // ── Dev bypass ─────────────────────────────────────────────────────────
+  const devToken = process.env.DEV_BYPASS_TOKEN;
+  if (devToken && token === devToken) {
+    // Bloqueia em produção mesmo que alguém defina a variável por engano
+    if (process.env.NODE_ENV === "production") {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+    c.set(authUserKey, {
+      userId: process.env.DEV_BYPASS_USER_ID ?? "dev-user-local",
+      sessionId: "dev-session",
+    } satisfies AuthUser);
+    await next();
+    return;
+  }
+  // ───────────────────────────────────────────────────────────────────────
 
   const clerk = getClerkClient();
   const authorizedParties = getAuthorizedParties();
