@@ -125,26 +125,31 @@ export default function DemandDetailsScreen() {
     }
   };
 
-  const handleCloseDemand = () => {
+  const handleUpdateStatus = (newStatus: "concluida" | "cancelada") => {
+    const title = newStatus === "concluida" ? "Concluir Demanda" : "Cancelar Demanda";
+    const message = newStatus === "concluida" 
+      ? "Parabens! O servico foi finalizado com sucesso?" 
+      : "Tem certeza que deseja cancelar esta demanda?";
+
     Alert.alert(
-      "Encerrar Demanda",
-      "Tem certeza? Ela nao sera mais visivel para prestadores.",
+      title,
+      message,
       [
-        { text: "Cancelar", style: "cancel" },
+        { text: "Voltar", style: "cancel" },
         {
-          text: "Encerrar",
-          style: "destructive",
+          text: newStatus === "concluida" ? "Concluir" : "Confirmar Cancelamento",
+          style: newStatus === "concluida" ? "default" : "destructive",
           onPress: async () => {
             if (!id) return;
             try {
               const updated = await callRpc<DemandResponse>("demands.update", {
                 id,
-                status: "encerrada",
+                status: newStatus,
               });
               setDemand(updated);
-              Alert.alert("Sucesso", "Demanda encerrada.");
+              Alert.alert("Sucesso", `Demanda ${newStatus === "concluida" ? "concluida" : "cancelada"}.`);
             } catch (error: unknown) {
-              const message = error instanceof Error ? error.message : "Erro ao encerrar.";
+              const message = error instanceof Error ? error.message : "Erro ao atualizar status.";
               Alert.alert("Erro", message);
             }
           },
@@ -306,10 +311,17 @@ export default function DemandDetailsScreen() {
                   style={styles.actionFlex}
                 />
                 <Button
-                  title="Encerrar"
+                  title="Concluir"
                   variant="outline"
-                  onPress={handleCloseDemand}
+                  onPress={() => handleUpdateStatus("concluida")}
                   style={styles.actionFlex}
+                />
+                <Button
+                  title="Cancelar"
+                  variant="ghost"
+                  onPress={() => handleUpdateStatus("cancelada")}
+                  style={styles.actionFlex}
+                  textStyle={{ color: theme.colors.error }}
                 />
               </View>
             )}
@@ -372,6 +384,8 @@ const styles = StyleSheet.create({
   },
   status_aberta: { backgroundColor: theme.colors.primaryLight },
   status_em_contato: { backgroundColor: theme.colors.secondaryLight },
+  status_concluida: { backgroundColor: theme.colors.successLight || "#e6fffa" },
+  status_cancelada: { backgroundColor: theme.colors.errorLight || "#fff5f5" },
   status_encerrada: { backgroundColor: theme.colors.border },
   statusText: {
     ...theme.typography.caption,

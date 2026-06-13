@@ -300,11 +300,11 @@ describe("RPC Features (Demands & Discovery)", () => {
       expect(data.error).toBe("Forbidden");
     });
 
-    it("deletes an encerrada demand when the caller is the owner", async () => {
+    it("deletes a concluida demand when the caller is the owner", async () => {
       const demandId = "a3333333-3333-4333-8333-333333333333";
       const existing = {
         contractor_id: authState.userId,
-        status: "encerrada",
+        status: "concluida",
       };
 
       fromMock.mockImplementation(() => {

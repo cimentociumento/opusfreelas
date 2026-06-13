@@ -70,6 +70,7 @@ export default function MyDemandsScreen() {
 
   const renderItem = ({ item }: { item: DemandResponse }) => {
     const isOwner = isAuthReady && isDemandOwner(item.contractorId, currentUserId);
+    const isClosed = ["concluida", "cancelada", "encerrada"].includes(item.status);
 
     return (
     <Card variant="elevated" style={styles.demandCard}>
@@ -125,6 +126,8 @@ export default function MyDemandsScreen() {
     const statusMap: { [key: string]: string } = {
       "aberta": "🟢 Aberta",
       "em_contato": "🟡 Em Contato", 
+      "concluida": "✅ Concluida",
+      "cancelada": "❌ Cancelada",
       "encerrada": "🔴 Encerrada"
     };
     return statusMap[status] || status;
@@ -232,6 +235,8 @@ const styles = StyleSheet.create({
   },
   status_aberta: { backgroundColor: theme.colors.primaryLight },
   status_em_contato: { backgroundColor: theme.colors.secondaryLight },
+  status_concluida: { backgroundColor: theme.colors.successLight || "#e6fffa" },
+  status_cancelada: { backgroundColor: theme.colors.errorLight || "#fff5f5" },
   status_encerrada: { backgroundColor: theme.colors.border },
   statusText: {
     ...theme.typography.caption,

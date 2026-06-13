@@ -1,5 +1,5 @@
-/** ID fixo usado no mock RPC quando o modo dev está ativo (sem sessão Clerk). */
-export const DEV_MOCK_USER_ID = "current_user";
+export const DEV_MOCK_USER_ID =
+  process.env.EXPO_PUBLIC_DEV_BYPASS_USER_ID ?? "dev-user-local";
 
 export function isDemandOwner(
   demandContractorId: string,
