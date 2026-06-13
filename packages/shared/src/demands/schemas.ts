@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const demandStatusSchema = z.enum(["aberta", "em_contato", "encerrada"]);
+export const demandStatusSchema = z.enum(["aberta", "em_contato", "concluida", "cancelada"]);
 export type DemandStatus = z.infer<typeof demandStatusSchema>;
 
 export const demandUrgencySchema = z.enum(["baixa", "media", "alta", "urgente_hoje"]);

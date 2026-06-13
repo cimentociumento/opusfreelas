@@ -74,9 +74,6 @@ export default function SignInScreen() {
 
   const [phoneInput, setPhoneInput] = useState("");
   const [code, setCode] = useState("");
-  const [sent, setSent] = useState(false);
-  const [pendingPhone, setPendingPhone] = useState<string | null>(null);
-  const [flowType, setFlowType] = useState<"signIn" | "signUp" | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const verifyingRef = useRef(false);
