@@ -1,0 +1,127 @@
+<!-- GSD:project-start source:PROJECT.md -->
+## Project
+
+**Opus Freelas**
+
+Opus Freelas é uma plataforma multiplataforma de freelancing focada em serviços manuais e rurais na região da Associação dos Municípios do Alto Uruguai Catarinense (**AMAUC**), Santa Catarina. Desenvolvida como Projeto Integrador do Curso Técnico em Informática para Internet do **IFC Campus Concórdia** (2026) pela equipe composta por Murilo Victor Jochkeck, Davi Ulisses Gusso, Mikael Ryan Prediger Costa, João Pedro Stein Bordin e Emily Lermen.
+
+A plataforma conecta **contratantes locais** (agricultores, produtores rurais, proprietários) a **prestadores** (capineiros, roçadores, operadores de máquinas agrícolas, diaristas, pedreiros, pintores e autônomos em geral). Seu principal objetivo é reduzir a informalidade na contratação de serviços rurais, aumentar a confiança através de perfis verificados, localidade, portfólio e reputação, e formalizar digitalmente essas relações de trabalho.
+
+### Core Value
+Permitir que contratantes da AMAUC encontrem e conectem-se rapidamente a prestadores locais confiáveis para serviços manuais e rurais.
+
+### Objetivo Geral (Pré-Projeto)
+Projetar, desenvolver e entregar uma solução multiplataforma que priorize o lado do **contratante** (publicação e descoberta de demandas), com fechamento do serviço fora da plataforma (telefone/WhatsApp) na V1.
+
+### Constraints
+- **Geografia**: Foco inicial restrito à AMAUC — garantir aderência ao contexto local e facilitar tração inicial.
+- **Produto**: Abordagem multiplataforma (mobile-first com Expo).
+- **Fluxo comercial**: Fechamento fora da plataforma no V1 — priorizar simplicidade e tempo de entrega.
+- **Confianca**: Verificação básica + localidade + portfólio + avaliações já no V1 — reduzir risco percebido por contratantes.
+- **Monetizacao**: Assinatura de prestadores (modelo SaaS via Mercado Pago) — validar viabilidade econômica sem intermediar pagamento entre partes.
+
+### Perfis de Usuário
+- **Contratante** (prioridade no MVP): publica demandas, busca prestadores, acompanha status e avalia.
+- **Prestador**: mantém perfil completo (raio de atendimento, categorias, portfólio, verificação), responde demandas e pode assinar plano para maior visibilidade.
+- Ambos os papéis podem coexistir na **mesma conta Clerk**.
+
+### Categorias de Serviço (MVP)
+- Serviços Rurais (capina, roçada, limpeza de pastos...)
+- Serviços com Máquinas (trator, retroescavadeira...)
+- Construção e Reforma
+- Serviços Agrícolas (plantio, colheita...)
+- Limpeza e Conservação
+- Serviços Gerais (jardinagem, mudanças...)
+
+### Fluxo Geral de Uso (V1)
+1. Autenticação via OTP (telefone) com Clerk.
+2. Contratante publica demanda (tipo, descrição, localização).
+3. Prestadores descobrem via filtros de serviço, município e raio (PostGIS).
+4. Contato/hand-off externo (telefone/WhatsApp).
+5. Atualização de status da demanda e avaliações pós-serviço.
+
+**Fora do escopo V1**: intermediação financeira, chat in-app completo, painel administrativo avançado.
+
+<!-- GSD:project-end -->
+
+<!-- GSD:stack-start source:research/STACK.md -->
+## Technology Stack
+
+### Visão Geral da Arquitetura
+Monorepo com **pnpm + Turborepo**. Separação clara entre:
+- `apps/mobile` → Cliente Expo (React Native)
+- `apps/api` → Backend Hono + Drizzle
+- `packages/shared` → Tipos, schemas Zod e utilitários compartilhados
+- `supabase/` → Migrações, RLS e Storage
+
+### Recommended Stack
+
+#### Core Client (multiplataforma)
+| Technology              | Version          | Purpose                          | Why |
+|-------------------------|------------------|----------------------------------|-----|
+| **Expo SDK**            | 55.x             | App iOS/Android + alvo web       | Código único, EAS Build, alinhado à documentação 2026 |
+| **React Native**        | 0.83.x           | UI nativa                        | Via Expo SDK 55 |
+| **expo-router**         | compatível       | Navegação + deep links           | Rotas previsíveis e compartilhamento de demandas |
+| **@tanstack/react-query** | 5.x            | Cache e sincronização            | Ideal para redes rurais intermitentes |
+| **Zod**                 | 3.x              | Validação compartilhada          | Mesmos schemas entre frontend e backend |
+| **React Native Maps**   | —                | Geolocalização                   | Integração com PostGIS |
+
+#### API e Domínio (Backend)
+| Technology       | Version     | Purpose                     | Why |
+|------------------|-------------|-----------------------------|-----|
+| **Node.js**      | 22.x LTS    | Runtime                     | Estável para webhooks |
+| **Hono**         | 4.x         | Framework HTTP              | Leve, TypeScript-first, excelente performance |
+| **Drizzle ORM**  | latest      | Acesso ao banco             | SQL explícito (essencial para PostGIS) |
+| **PostgreSQL**   | 17.x        | Banco principal             | Transações, RLS, integridade |
+| **PostGIS**      | 3.5+        | Geolocalização              | Consultas por raio (`ST_DWithin`) e município |
+| **Vitest**       | —           | Testes                      | Rápido e nativo TS |
+
+#### Identidade, Pagamentos e Infra
+- **Clerk**: Autenticação (OTP telefone + JWT), papéis na mesma conta.
+- **Mercado Pago**: Assinaturas recorrentes do prestador (SaaS).
+- **Supabase**: Hospedagem PostgreSQL + Storage (mídia de portfólio) + RLS.
+- **EAS Build**: Builds para loja.
+- **GitHub Actions**: CI/CD.
+
+### Alternatives Considered
+(Ver seção original no template — mantidas as recomendações de Expo vs Flutter, Hono vs NestJS, Drizzle vs Prisma, etc.)
+
+<!-- GSD:stack-end -->
+
+<!-- GSD:architecture-start source:ARCHITECTURE.md -->
+## Architecture
+
+**Padrão atual**:
+- **Cliente** → chama API via RPC-style routes (Hono).
+- **API** → valida JWT do Clerk → aplica regras de negócio → consulta banco com RLS.
+- **Banco** → última linha de defesa com Row Level Security alinhada aos papéis (contratante/prestador).
+- **Geolocalização** → colunas `geom` (PostGIS) + consultas espaciais.
+- **Armazenamento** → Supabase Storage com URLs assinadas.
+
+**Camadas principais**:
+1. Identidade e Autorização (Clerk + middleware Hono)
+2. Demandas (CRUD + ciclo de vida)
+3. Descoberta (filtros + geolocalização)
+4. Perfis e Confiança (portfólio, verificação, reviews)
+5. Assinatura e Visibilidade (Mercado Pago webhooks)
+
+O código segue padrões claros de TypeScript forte, validação dupla (Zod) e separação de responsabilidades.
+
+<!-- GSD:architecture-end -->
+
+<!-- GSD:conventions-start source:CONVENTIONS.md -->
+## Conventions
+
+- **Branches**: `feature/nome-curto`, `fix/descricao`
+- **Git Flow Simplificado**: `main` (produção) ← `develop` ← feature branches
+- **Código**: TypeScript strict, Zod para contratos, pastas por domínio (`demands/`, `profiles/`)
+- **Desenvolvimento**: Metodologia **GSD (Get Shit Done)** + vibe coding com IA (Claude principal)
+
+<!-- GSD:conventions-end -->
+
+<!-- GSD:workflow-start source:GSD defaults -->
+## GSD Workflow Enforcement
+
+Antes de usar ferramentas de edição, inicie o trabalho através de comandos GSD para manter os artefatos de planejamento sincronizados.
+
+<!-- GSD:workflow-end -->
