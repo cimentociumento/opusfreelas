@@ -1,11 +1,10 @@
-import { ClerkProvider } from "@clerk/clerk-expo";
-import { Stack } from "expo-router";
+import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
+import { Stack, Redirect } from "expo-router";
 import { Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect } from "react";
 
-// Token cache usando AsyncStorage — compatível com Expo Go (sem build nativo).
-// Em produção com EAS Build, substitua por:
-//   import { tokenCache } from "@clerk/clerk-expo/token-cache";
+// Token cache (mantido igual)
 const tokenCache = {
   async getToken(key: string) {
     try {
@@ -26,23 +25,38 @@ const tokenCache = {
   },
 };
 
-const FALLBACK_KEY =
-  "pk_test_aHVtYW5lLW1hbmF0ZWUtMzYuY2xlcmsuYWNjb3VudHMuZGV2JA";
+const FALLBACK_KEY = "pk_test_aHVtYW5lLW1hbmF0ZWUtMzYuY2xlcmsuYWNjb3VudHMuZGV2JA";
 
 const publishableKey =
   process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || FALLBACK_KEY;
 
+function InitialLayout() {
+  const { isLoaded, isSignedIn } = useAuth({
+    treatPendingAsSignedOut: false,   // ← Isso evita redirecionamento precoce para OTP
+  });
+
+  // Enquanto carrega o Clerk
+  if (!isLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Carregando...</Text>
+      </View>
+    );
+  }
+
+  // Se o usuário já estiver logado, vai direto para o app
+  if (isSignedIn) {
+    return <Redirect href="/(app)" />;
+  }
+
+  // Caso contrário, mostra as rotas de autenticação (sign-in, etc)
+  return <Stack screenOptions={{ headerShown: false }} />;
+}
+
 export default function RootLayout() {
   if (!publishableKey) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 20,
-        }}
-      >
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 20 }}>
         <Text>Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY</Text>
       </View>
     );
@@ -50,7 +64,7 @@ export default function RootLayout() {
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <InitialLayout />
     </ClerkProvider>
   );
 }
