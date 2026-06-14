@@ -1,15 +1,21 @@
+// apps/web/hooks/use-rpc.ts
 import { useAuth } from "@clerk/clerk-expo";
 import { useCallback, useMemo } from "react";
-import { getApiBaseUrl } from "../lib/api-url";
 
 export function useRpc() {
   const { getToken } = useAuth();
-  const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
 
-  const callRpc = useCallback(async <T = unknown>(procedure: string, input?: unknown): Promise<T> => {
+  const apiBaseUrl = useMemo(() => {
+    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  }, []);
+
+  const callRpc = useCallback(async <T = unknown>(
+    procedure: string, 
+    input?: unknown
+  ): Promise<T> => {
     const token = await getToken();
     if (!token) {
-      throw new Error("Sessao invalida: faca login novamente.");
+      throw new Error("Sessão inválida: faça login novamente.");
     }
 
     let response: Response;
@@ -25,10 +31,9 @@ export function useRpc() {
           input: input ?? {},
         }),
       });
-    } catch {
-      throw new Error(
-        `Nao foi possivel conectar na API (${apiBaseUrl}). Verifique se a API esta rodando e se EXPO_PUBLIC_API_URL aponta para o IP correto no Expo Go.`
-      );
+    } catch (err) {
+      console.error("Fetch error:", err);
+      throw new Error(`Não foi possível conectar na API (${apiBaseUrl}). Verifique se o backend está rodando.`);
     }
 
     const text = await response.text();
@@ -36,22 +41,17 @@ export function useRpc() {
     try {
       data = text ? JSON.parse(text) : null;
     } catch {
-      throw new Error(`Resposta invalida da API (${response.status}): ${text.slice(0, 120)}`);
+      throw new Error(`Resposta inválida da API (${response.status})`);
     }
 
     if (!response.ok) {
-      const err = data as { error?: string; details?: unknown };
-      const detail =
-        err?.details && typeof err.details === "object"
-          ? JSON.stringify(err.details)
-          : err?.details != null
-            ? String(err.details)
-            : "";
-      throw new Error([err?.error ?? "RPC call failed", detail].filter(Boolean).join(" — "));
+      const err = data as { error?: string; details?: unknown; reason?: string };
+      const message = err?.reason || err?.error || "Erro ao executar operação";
+      throw new Error(message);
     }
 
     return data as T;
   }, [apiBaseUrl, getToken]);
 
-  return { callRpc, apiBaseUrl };
+  return { callRpc };
 }
