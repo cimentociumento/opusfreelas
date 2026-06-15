@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TextInput, 
-  ScrollView, 
-  Alert 
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  ScrollView,
+  Platform,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
@@ -16,6 +16,18 @@ import {
   demandUrgencySchema,
 } from "@amauc/shared";
 import { Card, Button, theme } from "../../../components";
+
+function showAlert(title: string, message: string, buttons?: { text: string; style?: "default" | "cancel" | "destructive"; onPress?: () => void }[]) {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+    if (buttons && buttons.length > 0) {
+      buttons[0].onPress?.();
+    }
+  } else {
+    const { Alert } = require("react-native");
+    Alert.alert(title, message, buttons);
+  }
+}
 
 export default function CreateDemandScreen() {
   const router = useRouter();
@@ -39,7 +51,7 @@ export default function CreateDemandScreen() {
     const parsed = createDemandSchema.safeParse(form);
     if (!parsed.success) {
       const firstIssue = parsed.error.issues[0];
-      Alert.alert("Erro", firstIssue?.message ?? "Preencha todos os campos corretamente.");
+      showAlert("Erro", firstIssue?.message ?? "Preencha todos os campos corretamente.");
       return;
     }
 
@@ -62,7 +74,7 @@ export default function CreateDemandScreen() {
 
       isSubmittingRef.current = false;
       setLoading(false);
-      Alert.alert("Erro ao publicar", message);
+      showAlert("Erro ao publicar", message);
     }
   };
 
