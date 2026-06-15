@@ -3,7 +3,9 @@ import pino from "pino";
 import type { Hono } from "hono";
 
 const logger = pino({
-  level: process.env.LOG_LEVEL ?? "info",
+  // Evita flood de logs de todas as requisições em desenvolvimento.
+  // Se quiser ver detalhes, defina LOG_LEVEL=info ou debug no ambiente.
+  level: process.env.LOG_LEVEL ?? "warn",
   base: { service: process.env.OTEL_SERVICE_NAME ?? "amauc-api" },
 });
 
@@ -19,8 +21,10 @@ export function initObservability(app: Hono) {
     const startedAt = Date.now();
     await next();
 
-    // Avoid logging body payloads/PII (e.g. phone numbers) here.
-    logger.info({
+    // Evita flood de logs de cada chamada RPC em desenvolvimento.
+    // Mantém apenas logs de erro/avisos visíveis; requisições normais ficam em debug.
+    const level = c.res.status >= 400 ? "warn" : "debug";
+    logger[level]({
       method: c.req.method,
       path: c.req.path,
       status: c.res.status,

@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  FlatList, 
+import {
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
   ActivityIndicator,
   RefreshControl,
-  Alert,
+  Platform,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
@@ -14,6 +14,18 @@ import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { isDemandOwner } from "../../../lib/auth-constants";
 import { DemandResponse } from "@amauc/shared";
 import { Card, Button, theme } from "../../../components";
+
+function showAlert(title: string, message: string, buttons?: { text: string; style?: "default" | "cancel" | "destructive"; onPress?: () => void }[]) {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+    if (buttons && buttons.length > 0) {
+      buttons[0].onPress?.();
+    }
+  } else {
+    const { Alert } = require("react-native");
+    Alert.alert(title, message, buttons);
+  }
+}
 
 export default function MyDemandsScreen() {
   const router = useRouter();
@@ -46,7 +58,7 @@ export default function MyDemandsScreen() {
   };
 
   const confirmDelete = (demandId: string) => {
-    Alert.alert(
+    showAlert(
       "Excluir Demanda",
       "Esta ação é irreversível.",
       [
@@ -60,7 +72,7 @@ export default function MyDemandsScreen() {
               setDemands((prev) => prev.filter((d) => d.id !== demandId));
             } catch (error: unknown) {
               const message = error instanceof Error ? error.message : "Erro ao excluir demanda.";
-              Alert.alert("Erro", message);
+              showAlert("Erro", message);
             }
           },
         },

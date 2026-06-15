@@ -5,8 +5,8 @@ import {
   View,
   ScrollView,
   ActivityIndicator,
-  Alert,
   TextInput,
+  Platform,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -23,6 +23,17 @@ import { Button, theme } from "../../../components";
 function paramToString(value: string | string[] | undefined): string | undefined {
   if (value == null) return undefined;
   return Array.isArray(value) ? value[0] : value;
+}
+
+function showAlert(title: string, message: string, buttons?: { text: string; style?: "default" | "cancel" | "destructive"; onPress?: () => void }[]) {
+  if (Platform.OS === "web") {
+    window.alert(`${title}\n\n${message}`);
+    if (buttons && buttons.length > 0) {
+      buttons[0].onPress?.();
+    }
+  } else {
+    Alert.alert(title, message, buttons);
+  }
 }
 
 type EditForm = {
@@ -64,7 +75,7 @@ export default function DemandDetailsScreen() {
 
   useEffect(() => {
     if (!id) {
-      Alert.alert("Erro", "ID da demanda invalido.");
+      showAlert("Erro", "ID da demanda invalido.");
       router.back();
       setLoading(false);
       return;
@@ -81,12 +92,12 @@ export default function DemandDetailsScreen() {
           setDemand(found);
           setEditForm(toEditForm(found));
         } else {
-          Alert.alert("Erro", "Demanda nao encontrada.");
+          showAlert("Erro", "Demanda nao encontrada.");
           router.back();
         }
       } catch {
         if (!cancelled) {
-          Alert.alert("Erro", "Nao foi possivel carregar a demanda.");
+          showAlert("Erro", "Nao foi possivel carregar a demanda.");
           router.back();
         }
       } finally {
@@ -106,7 +117,7 @@ export default function DemandDetailsScreen() {
     const parsed = updateDemandRpcSchema.safeParse({ id, ...editForm });
     if (!parsed.success) {
       const firstIssue = parsed.error.issues[0];
-      Alert.alert("Erro", firstIssue?.message ?? "Verifique os campos da demanda.");
+      showAlert("Erro", firstIssue?.message ?? "Verifique os campos da demanda.");
       return;
     }
 
@@ -116,10 +127,10 @@ export default function DemandDetailsScreen() {
       setDemand(updated);
       setEditForm(toEditForm(updated));
       setIsEditing(false);
-      Alert.alert("Sucesso", "Demanda atualizada!");
+      showAlert("Sucesso", "Demanda atualizada!");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro ao salvar.";
-      Alert.alert("Erro", message);
+      showAlert("Erro", message);
     } finally {
       setSaving(false);
     }
@@ -127,11 +138,11 @@ export default function DemandDetailsScreen() {
 
   const handleUpdateStatus = (newStatus: "concluida" | "cancelada") => {
     const title = newStatus === "concluida" ? "Concluir Demanda" : "Cancelar Demanda";
-    const message = newStatus === "concluida" 
-      ? "Parabens! O servico foi finalizado com sucesso?" 
+    const message = newStatus === "concluida"
+      ? "Parabens! O servico foi finalizado com sucesso?"
       : "Tem certeza que deseja cancelar esta demanda?";
 
-    Alert.alert(
+    showAlert(
       title,
       message,
       [
@@ -147,10 +158,10 @@ export default function DemandDetailsScreen() {
                 status: newStatus,
               });
               setDemand(updated);
-              Alert.alert("Sucesso", `Demanda ${newStatus === "concluida" ? "concluida" : "cancelada"}.`);
+              showAlert("Sucesso", `Demanda ${newStatus === "concluida" ? "concluida" : "cancelada"}.`);
             } catch (error: unknown) {
               const message = error instanceof Error ? error.message : "Erro ao atualizar status.";
-              Alert.alert("Erro", message);
+              showAlert("Erro", message);
             }
           },
         },
@@ -159,7 +170,7 @@ export default function DemandDetailsScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert(
+    showAlert(
       "Excluir Demanda",
       "Esta ação é irreversível.",
       [
@@ -178,7 +189,7 @@ export default function DemandDetailsScreen() {
               isDeletingRef.current = false;
               setDeleting(false);
               const message = error instanceof Error ? error.message : "Erro ao excluir.";
-              Alert.alert("Erro", message);
+              showAlert("Erro", message);
             }
           },
         },
