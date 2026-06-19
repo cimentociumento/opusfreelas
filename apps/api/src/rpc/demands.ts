@@ -158,9 +158,6 @@ export const demandHandlers = {
       );
     }
 
-    // Permite editar mesmo se estiver encerrada, facilitando correções retroativas se necessário
-    // mas mantém a lógica de ownership garantida pelo getOwnedDemand e pela query abaixo
-
     const dbUpdate: Record<string, unknown> = {};
     if (updateData.serviceType !== undefined) dbUpdate.service_type = updateData.serviceType;
     if (updateData.description !== undefined) dbUpdate.description = updateData.description;
@@ -214,9 +211,6 @@ export const demandHandlers = {
         403
       );
     }
-
-    // Permite deletar qualquer demanda do usuário, independente do status
-    // A segurança de ownership já é garantida pelo getOwnedDemand e pela cláusula WHERE no delete
 
     const { error } = await supabase
       .from("demands")

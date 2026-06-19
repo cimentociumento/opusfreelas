@@ -6,31 +6,19 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
-  Platform,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { isDemandOwner } from "../../../lib/auth-constants";
 import { DemandResponse } from "@amauc/shared";
-import { Card, Button, theme } from "../../../components";
-
-function showAlert(title: string, message: string, buttons?: { text: string; style?: "default" | "cancel" | "destructive"; onPress?: () => void }[]) {
-  if (Platform.OS === "web") {
-    window.alert(`${title}\n\n${message}`);
-    if (buttons && buttons.length > 0) {
-      buttons[0].onPress?.();
-    }
-  } else {
-    const { Alert } = require("react-native");
-    Alert.alert(title, message, buttons);
-  }
-}
+import { Card, Button, theme, useToast } from "../../../components";
 
 export default function MyDemandsScreen() {
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
   const { userId: currentUserId, isReady: isAuthReady } = useEffectiveUserId();
+  const { showToast } = useToast();
   
   const [demands, setDemands] = useState<DemandResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,29 +43,6 @@ export default function MyDemandsScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchDemands();
-  };
-
-  const confirmDelete = (demandId: string) => {
-    showAlert(
-      "Excluir Demanda",
-      "Esta ação é irreversível.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Excluir",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await callRpc("demands.delete", { id: demandId });
-              setDemands((prev) => prev.filter((d) => d.id !== demandId));
-            } catch (error: unknown) {
-              const message = error instanceof Error ? error.message : "Erro ao excluir demanda.";
-              showAlert("Erro", message);
-            }
-          },
-        },
-      ]
-    );
   };
 
   const renderItem = ({ item }: { item: DemandResponse }) => {
@@ -110,25 +75,6 @@ export default function MyDemandsScreen() {
           style={styles.actionBtn}
           onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}
         />
-        {isOwner && (
-          <>
-            <Button
-              title="Editar"
-              variant="outline"
-              size="sm"
-              style={styles.actionBtn}
-              onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}
-            />
-            <Button
-              title="Excluir"
-              variant="outline"
-              size="sm"
-              style={styles.actionBtn}
-              onPress={() => confirmDelete(item.id)}
-              textStyle={styles.deleteText}
-            />
-          </>
-        )}
       </View>
     </Card>
     );
@@ -277,9 +223,6 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
-  },
-  deleteText: {
-    color: theme.colors.error,
   },
   emptyState: {
     padding: theme.spacing.xl,

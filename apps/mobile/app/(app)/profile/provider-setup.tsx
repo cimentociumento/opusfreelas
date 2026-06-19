@@ -1,13 +1,14 @@
 import { useRef, useState } from "react";
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { serviceCategories, ServiceCategory } from "@amauc/shared";
-import { theme } from "../../../components";
+import { theme, useToast } from "../../../components";
 
 export default function ProviderSetupScreen() {
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
+  const { showToast } = useToast();
   const isSavingRef = useRef(false);
 
   const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>([]);
@@ -26,7 +27,7 @@ export default function ProviderSetupScreen() {
     if (isSavingRef.current) return;
 
     if (selectedCategories.length === 0) {
-      Alert.alert("Erro", "Selecione pelo menos uma categoria.");
+      showToast("Selecione pelo menos uma categoria.", "error");
       return;
     }
 
@@ -48,13 +49,12 @@ export default function ProviderSetupScreen() {
         serviceCategories: selectedCategories,
       });
 
-      Alert.alert("Sucesso", "Perfil atualizado! Agora você pode ser encontrado por contratantes.", [
-        { text: "OK", onPress: () => router.replace("/") },
-      ]);
+      showToast("Perfil atualizado! Agora você pode ser encontrado por contratantes.", "success");
+      router.replace("/");
     } catch (error: any) {
       isSavingRef.current = false;
       setLoading(false);
-      Alert.alert("Erro ao salvar", error.message);
+      showToast(error.message, "error");
     }
   };
 

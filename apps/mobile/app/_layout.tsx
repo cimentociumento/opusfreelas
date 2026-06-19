@@ -3,6 +3,7 @@ import { Stack, Redirect } from "expo-router";
 import { Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect } from "react";
+import { ToastProvider } from "../components/Toast";
 
 // Token cache (mantido igual)
 const tokenCache = {
@@ -63,8 +64,10 @@ export default function RootLayout() {
   }
 
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <InitialLayout />
-    </ClerkProvider>
+    <ToastProvider>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+        <InitialLayout />
+      </ClerkProvider>
+    </ToastProvider>
   );
 }

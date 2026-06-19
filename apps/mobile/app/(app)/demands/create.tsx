@@ -5,7 +5,6 @@ import {
   View,
   TextInput,
   ScrollView,
-  Platform,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
@@ -15,23 +14,12 @@ import {
   createDemandSchema,
   demandUrgencySchema,
 } from "@amauc/shared";
-import { Card, Button, theme } from "../../../components";
-
-function showAlert(title: string, message: string, buttons?: { text: string; style?: "default" | "cancel" | "destructive"; onPress?: () => void }[]) {
-  if (Platform.OS === "web") {
-    window.alert(`${title}\n\n${message}`);
-    if (buttons && buttons.length > 0) {
-      buttons[0].onPress?.();
-    }
-  } else {
-    const { Alert } = require("react-native");
-    Alert.alert(title, message, buttons);
-  }
-}
+import { Card, Button, theme, useToast } from "../../../components";
 
 export default function CreateDemandScreen() {
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
+  const { showToast } = useToast();
   const isSubmittingRef = useRef(false);
   
   const [loading, setLoading] = useState(false);
@@ -51,7 +39,7 @@ export default function CreateDemandScreen() {
     const parsed = createDemandSchema.safeParse(form);
     if (!parsed.success) {
       const firstIssue = parsed.error.issues[0];
-      showAlert("Erro", firstIssue?.message ?? "Preencha todos os campos corretamente.");
+      showToast(firstIssue?.message ?? "Preencha todos os campos corretamente.", "error");
       return;
     }
 
@@ -60,6 +48,7 @@ export default function CreateDemandScreen() {
 
     try {
       await callRpc<DemandResponse>("demands.create", parsed.data);
+      showToast("Demanda publicada com sucesso!", "success");
       router.replace("/");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro desconhecido";
@@ -68,13 +57,14 @@ export default function CreateDemandScreen() {
         message.toLowerCase().includes("duplicat");
 
       if (isDuplicate) {
+        showToast("Demanda duplicada. Você já publicou essa demanda recentemente.", "warning");
         router.replace("/");
         return;
       }
 
       isSubmittingRef.current = false;
       setLoading(false);
-      showAlert("Erro ao publicar", message);
+      showToast(message, "error");
     }
   };
 
