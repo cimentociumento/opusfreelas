@@ -6,7 +6,6 @@ import {
   ScrollView,
   ActivityIndicator,
   TextInput,
-  Platform,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -18,22 +17,11 @@ import {
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { isDemandOwner } from "../../../lib/auth-constants";
-import { Button, theme } from "../../../components";
+import { Button, theme, useToast } from "../../../components";
 
 function paramToString(value: string | string[] | undefined): string | undefined {
   if (value == null) return undefined;
   return Array.isArray(value) ? value[0] : value;
-}
-
-function showAlert(title: string, message: string, buttons?: { text: string; style?: "default" | "cancel" | "destructive"; onPress?: () => void }[]) {
-  if (Platform.OS === "web") {
-    window.alert(`${title}\n\n${message}`);
-    if (buttons && buttons.length > 0) {
-      buttons[0].onPress?.();
-    }
-  } else {
-    Alert.alert(title, message, buttons);
-  }
 }
 
 type EditForm = {
@@ -64,18 +52,14 @@ export default function DemandDetailsScreen() {
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
   const { userId: currentUserId, isReady: isAuthReady } = useEffectiveUserId();
+  const { showToast } = useToast();
 
   const [demand, setDemand] = useState<DemandResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<EditForm | null>(null);
-  const isDeletingRef = useRef(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     if (!id) {
-      showAlert("Erro", "ID da demanda invalido.");
       router.back();
       setLoading(false);
       return;
@@ -90,14 +74,11 @@ export default function DemandDetailsScreen() {
         const found = demands.find((d) => d.id === id);
         if (found) {
           setDemand(found);
-          setEditForm(toEditForm(found));
         } else {
-          showAlert("Erro", "Demanda nao encontrada.");
           router.back();
         }
       } catch {
         if (!cancelled) {
-          showAlert("Erro", "Nao foi possivel carregar a demanda.");
           router.back();
         }
       } finally {
@@ -111,90 +92,24 @@ export default function DemandDetailsScreen() {
     };
   }, [id, callRpc, router]);
 
-  const handleSave = async () => {
-    if (!id || !editForm) return;
+  const handleUpdateStatus = async (newStatus: "concluida" | "cancelada") => {
+    if (!id) return;
 
-    const parsed = updateDemandRpcSchema.safeParse({ id, ...editForm });
-    if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0];
-      showAlert("Erro", firstIssue?.message ?? "Verifique os campos da demanda.");
-      return;
-    }
-
-    setSaving(true);
+    setUpdatingStatus(true);
     try {
-      const updated = await callRpc<DemandResponse>("demands.update", parsed.data);
+      const updated = await callRpc<DemandResponse>("demands.update", {
+        id,
+        status: newStatus,
+      });
       setDemand(updated);
-      setEditForm(toEditForm(updated));
-      setIsEditing(false);
-      showAlert("Sucesso", "Demanda atualizada!");
+      const statusLabel = newStatus === "concluida" ? "concluída" : "cancelada";
+      showToast(`Demanda marcada como ${statusLabel}`, "success");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Erro ao salvar.";
-      showAlert("Erro", message);
+      const message = error instanceof Error ? error.message : "Erro ao atualizar status.";
+      showToast(message, "error");
     } finally {
-      setSaving(false);
+      setUpdatingStatus(false);
     }
-  };
-
-  const handleUpdateStatus = (newStatus: "concluida" | "cancelada") => {
-    const title = newStatus === "concluida" ? "Concluir Demanda" : "Cancelar Demanda";
-    const message = newStatus === "concluida"
-      ? "Parabens! O servico foi finalizado com sucesso?"
-      : "Tem certeza que deseja cancelar esta demanda?";
-
-    showAlert(
-      title,
-      message,
-      [
-        { text: "Voltar", style: "cancel" },
-        {
-          text: newStatus === "concluida" ? "Concluir" : "Confirmar Cancelamento",
-          style: newStatus === "concluida" ? "default" : "destructive",
-          onPress: async () => {
-            if (!id) return;
-            try {
-              const updated = await callRpc<DemandResponse>("demands.update", {
-                id,
-                status: newStatus,
-              });
-              setDemand(updated);
-              showAlert("Sucesso", `Demanda ${newStatus === "concluida" ? "concluida" : "cancelada"}.`);
-            } catch (error: unknown) {
-              const message = error instanceof Error ? error.message : "Erro ao atualizar status.";
-              showAlert("Erro", message);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleDelete = () => {
-    showAlert(
-      "Excluir Demanda",
-      "Esta ação é irreversível.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Excluir",
-          style: "destructive",
-          onPress: async () => {
-            if (!id || isDeletingRef.current) return;
-            isDeletingRef.current = true;
-            setDeleting(true);
-            try {
-              await callRpc("demands.delete", { id });
-              router.replace("/demands");
-            } catch (error: unknown) {
-              isDeletingRef.current = false;
-              setDeleting(false);
-              const message = error instanceof Error ? error.message : "Erro ao excluir.";
-              showAlert("Erro", message);
-            }
-          },
-        },
-      ]
-    );
   };
 
   if (loading) {
@@ -205,15 +120,13 @@ export default function DemandDetailsScreen() {
     );
   }
 
-  if (!demand || !editForm) return null;
+  if (!demand) return null;
 
   const isOwner = isAuthReady && isDemandOwner(demand.contractorId, currentUserId);
-  const canEdit = isOwner;
-  const canDelete = isOwner;
 
   return (
     <ScrollView style={styles.container}>
-      <Stack.Screen options={{ title: isEditing ? "Editar Demanda" : "Detalhes da Demanda" }} />
+      <Stack.Screen options={{ title: "Detalhes da Demanda" }} />
 
       <View style={styles.card}>
         <View style={styles.header}>
@@ -223,134 +136,37 @@ export default function DemandDetailsScreen() {
           <Text style={styles.date}>{new Date(demand.createdAt).toLocaleDateString("pt-BR")}</Text>
         </View>
 
-        {isEditing ? (
-          <View style={styles.form}>
-            <Text style={styles.label}>Tipo de Servico</Text>
-            <TextInput
-              style={styles.input}
-              value={editForm.serviceType}
-              onChangeText={(text) => setEditForm({ ...editForm, serviceType: text })}
-              editable={!saving}
-            />
+        <View>
+          <Text style={styles.title}>{demand.serviceType}</Text>
+          <Text style={styles.description}>{demand.description}</Text>
 
-            <Text style={styles.label}>Descricao</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              multiline
-              value={editForm.description}
-              onChangeText={(text) => setEditForm({ ...editForm, description: text })}
-              editable={!saving}
-            />
-            <Text style={styles.helperText}>{editForm.description.length}/30 caracteres minimos</Text>
+          <View style={styles.infoGrid}>
+            <InfoItem label="Municipio" value={demand.municipality} />
+            <InfoItem label="Urgencia" value={demand.urgency.replace("_", " ")} />
+            <InfoItem label="Visibilidade" value={`${demand.visibilityRadius}km`} />
+          </View>
 
-            <Text style={styles.label}>Municipio</Text>
-            <TextInput
-              style={styles.input}
-              value={editForm.municipality}
-              onChangeText={(text) => setEditForm({ ...editForm, municipality: text })}
-              editable={!saving}
-            />
-
-            <Text style={styles.label}>Urgencia</Text>
-            <View style={styles.chipRow}>
-              {demandUrgencySchema.options.map((u) => (
-                <Button
-                  key={u}
-                  title={u.replace("_", " ")}
-                  variant={editForm.urgency === u ? "primary" : "outline"}
-                  size="sm"
-                  style={styles.chip}
-                  onPress={() => setEditForm({ ...editForm, urgency: u })}
-                  disabled={saving}
-                />
-              ))}
-            </View>
-
-            <Text style={styles.label}>Raio de busca: {editForm.visibilityRadius}km</Text>
-            <View style={styles.chipRow}>
-              {[5, 10, 20, 50].map((r) => (
-                <Button
-                  key={r}
-                  title={`${r}km`}
-                  variant={editForm.visibilityRadius === r ? "primary" : "outline"}
-                  size="sm"
-                  style={styles.chip}
-                  onPress={() => setEditForm({ ...editForm, visibilityRadius: r })}
-                  disabled={saving}
-                />
-              ))}
-            </View>
-
-            <View style={styles.editActions}>
+          {isOwner && (
+            <View style={styles.actions}>
               <Button
-                title="Cancelar"
+                title={updatingStatus ? "Atualizando..." : "Concluir"}
                 variant="outline"
-                onPress={() => {
-                  setEditForm(toEditForm(demand));
-                  setIsEditing(false);
-                }}
-                disabled={saving}
+                onPress={() => handleUpdateStatus("concluida")}
                 style={styles.actionFlex}
+                disabled={updatingStatus}
+                loading={updatingStatus}
               />
               <Button
-                title={saving ? "Salvando..." : "Salvar"}
-                variant="primary"
-                onPress={handleSave}
-                loading={saving}
-                disabled={saving}
+                title={updatingStatus ? "Atualizando..." : "Cancelar"}
+                variant="ghost"
+                onPress={() => handleUpdateStatus("cancelada")}
                 style={styles.actionFlex}
+                disabled={updatingStatus}
+                textStyle={{ color: theme.colors.error }}
               />
             </View>
-          </View>
-        ) : (
-          <View>
-            <Text style={styles.title}>{demand.serviceType}</Text>
-            <Text style={styles.description}>{demand.description}</Text>
-
-            <View style={styles.infoGrid}>
-              <InfoItem label="Municipio" value={demand.municipality} />
-              <InfoItem label="Urgencia" value={demand.urgency.replace("_", " ")} />
-              <InfoItem label="Visibilidade" value={`${demand.visibilityRadius}km`} />
-            </View>
-
-            {canEdit && (
-              <View style={styles.actions}>
-                <Button
-                  title="Editar"
-                  variant="primary"
-                  onPress={() => setIsEditing(true)}
-                  style={styles.actionFlex}
-                />
-                <Button
-                  title="Concluir"
-                  variant="outline"
-                  onPress={() => handleUpdateStatus("concluida")}
-                  style={styles.actionFlex}
-                />
-                <Button
-                  title="Cancelar"
-                  variant="ghost"
-                  onPress={() => handleUpdateStatus("cancelada")}
-                  style={styles.actionFlex}
-                  textStyle={{ color: theme.colors.error }}
-                />
-              </View>
-            )}
-
-            {canDelete && (
-              <View style={styles.deleteSection}>
-                <Button
-                  title={deleting ? "Excluindo..." : "Excluir"}
-                  variant="ghost"
-                  onPress={handleDelete}
-                  disabled={deleting}
-                  loading={deleting}
-                  textStyle={styles.deleteText}
-                />
-              </View>
-            )}
-          </View>
-        )}
+          )}
+        </View>
       </View>
     </ScrollView>
   );
@@ -449,52 +265,5 @@ const styles = StyleSheet.create({
   },
   actionFlex: {
     flex: 1,
-  },
-  deleteSection: {
-    alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    paddingTop: theme.spacing.md,
-  },
-  deleteText: {
-    color: theme.colors.error,
-  },
-  form: {
-    gap: theme.spacing.sm,
-  },
-  label: {
-    ...theme.typography.body2,
-    fontWeight: "700",
-    color: theme.colors.text,
-    marginTop: theme.spacing.sm,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    ...theme.typography.body1,
-    backgroundColor: theme.colors.surface,
-  },
-  textArea: {
-    height: 120,
-    textAlignVertical: "top",
-  },
-  helperText: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
-  },
-  chipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.spacing.sm,
-  },
-  chip: {
-    minWidth: 72,
-  },
-  editActions: {
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.lg,
   },
 });
