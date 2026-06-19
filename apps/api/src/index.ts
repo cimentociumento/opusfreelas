@@ -1,5 +1,7 @@
+import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import { requireClerkAuth, getAuthUser } from "./middleware/clerk.js";
 import { handleRpc } from "./rpc/router.js";
 import { handleRevokeOthersRoute } from "./sessions/revoke.js";
@@ -8,6 +10,15 @@ import { initObservability } from "./observability.js";
 export const app = new Hono();
 
 initObservability(app);
+
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.get("/health", (c) => c.json({ ok: true }));
 

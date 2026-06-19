@@ -20,7 +20,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.opusfreelas"
     },
     "web": {
       "bundler": "metro",
@@ -29,9 +30,14 @@
     },
     "plugins": [
       "expo-router",
+      "expo-font",
       "expo-secure-store",
-      "expo-web-browser",
-      "expo-font"
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permita que o Opus Freelas acesse sua localização para mostrar serviços e profissionais próximos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

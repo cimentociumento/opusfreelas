@@ -1,56 +1,30 @@
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
+import {
+  createDemandSchema,
+  updateDemandRpcSchema,
+  deleteDemandSchema,
+} from "@amauc/shared";
 import type { Context } from "hono";
 import { getAuthUser } from "../middleware/clerk.js";
+import { getSupabaseAdmin } from "../lib/supabase.js";
+import { mapDemandRow } from "../lib/demands-mapper.js";
 
-const demandStatusSchema = z.enum(["aberta", "em_contato", "encerrada"]);
-const demandUrgencySchema = z.enum(["baixa", "media", "alta", "urgente_hoje"]);
+async function getOwnedDemand(supabase: ReturnType<typeof getSupabaseAdmin>, id: string, userId: string) {
+  const { data: existing, error: fetchError } = await supabase
+    .from("demands")
+    .select("contractor_id, status")
+    .eq("id", id)
+    .single();
 
-const createDemandSchema = z.object({
-  serviceType: z.string().min(2).max(100),
-  description: z.string().min(30).max(1000),
-  municipality: z.string().min(2).max(100),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
-  urgency: demandUrgencySchema.default("media"),
-  visibilityRadius: z.number().int().min(1).max(100).default(10),
-});
-
-const updateDemandSchema = createDemandSchema.partial().extend({
-  status: demandStatusSchema.optional(),
-});
-
-function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
+  if (fetchError || !existing) {
+    return { error: "not_found" as const };
   }
-  return createClient(url, serviceRoleKey);
-}
 
-// Map database row to shared schema
-function mapDemandRow(row: any) {
-  // Extract coordinates from PostGIS geography point (POINT(lng lat))
-  // Usually returned as string or object depending on driver/RPC
-  // For standard Supabase select on geography, it might return a GeoJSON-like object
-  const lng = row.location?.coordinates?.[0] ?? 0;
-  const lat = row.location?.coordinates?.[1] ?? 0;
+  if (existing.contractor_id !== userId) {
+    return { error: "forbidden" as const, reason: "Acesso negado: você não é o autor desta demanda" };
+  }
 
-  return {
-    id: row.id,
-    contractorId: row.contractor_id,
-    serviceType: row.service_type,
-    description: row.description,
-    municipality: row.municipality,
-    latitude: lat,
-    longitude: lng,
-    urgency: row.urgency,
-    visibilityRadius: row.visibility_radius,
-    status: row.status,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+  return { existing };
 }
 
 export const demandHandlers = {
@@ -64,11 +38,29 @@ export const demandHandlers = {
     const { serviceType, description, municipality, latitude, longitude, urgency, visibilityRadius } = parsed.data;
     const supabase = getSupabaseAdmin();
 
-    // Use RPC or raw SQL for PostGIS insertion if possible, 
-    // but Supabase JS allows strings for geography in some versions or via explicit casting in RPC.
-    // Here we use a common pattern for PostGIS via Supabase: ST_SetSRID(ST_MakePoint(lng, lat), 4326)
-    // Since we don't have a custom RPC yet, we'll try standard insertion if geography is supported as GeoJSON/String
-    
+    const duplicateWindowStart = new Date(Date.now() - 5_000).toISOString();
+    const { data: recentDuplicate } = await supabase
+      .from("demands")
+      .select()
+      .eq("contractor_id", auth.userId)
+      .eq("service_type", serviceType)
+      .eq("description", description)
+      .gte("created_at", duplicateWindowStart)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentDuplicate) {
+      return c.json(
+        {
+          error: "Duplicate demand",
+          reason: "A demand with the same content was created recently",
+          id: recentDuplicate.id,
+        },
+        409
+      );
+    }
+
     const { data, error } = await supabase
       .from("demands")
       .insert({
@@ -111,51 +103,48 @@ export const demandHandlers = {
 
   "demands.update": async (c: Context, input: unknown) => {
     const auth = getAuthUser(c);
-    const parsed = updateDemandSchema.safeParse(input);
+    const parsed = updateDemandRpcSchema.safeParse(input);
     if (!parsed.success) {
       return c.json({ error: "Invalid input", details: parsed.error.flatten() }, 400);
     }
 
-    // Need ID in input for update
-    const { id, ...updateData } = input as any;
-    if (!id) return c.json({ error: "Missing demand ID" }, 400);
-
+    const { id, ...updateData } = parsed.data;
     const supabase = getSupabaseAdmin();
 
-    // Verify ownership and status
-    const { data: existing, error: fetchError } = await supabase
-      .from("demands")
-      .select("contractor_id, status")
-      .eq("id", id)
-      .single();
-
-    if (fetchError || !existing) {
+    const ownership = await getOwnedDemand(supabase, id, auth.userId);
+    if (ownership.error === "not_found") {
       return c.json({ error: "Demand not found" }, 404);
     }
-
-    if (existing.contractor_id !== auth.userId) {
-      return c.json({ error: "Forbidden" }, 403);
+    if (ownership.error === "forbidden") {
+      return c.json(
+        {
+          error: "Forbidden",
+          reason: ownership.reason ?? "Only the demand creator can edit",
+        },
+        403
+      );
     }
 
-    if (existing.status === "encerrada" && !parsed.data.status) {
-      return c.json({ error: "Cannot edit closed demand" }, 400);
+    const dbUpdate: Record<string, unknown> = {};
+    if (updateData.serviceType !== undefined) dbUpdate.service_type = updateData.serviceType;
+    if (updateData.description !== undefined) dbUpdate.description = updateData.description;
+    if (updateData.municipality !== undefined) dbUpdate.municipality = updateData.municipality;
+    if (updateData.urgency !== undefined) dbUpdate.urgency = updateData.urgency;
+    if (updateData.visibilityRadius !== undefined) dbUpdate.visibility_radius = updateData.visibilityRadius;
+    if (updateData.status !== undefined) dbUpdate.status = updateData.status;
+    if (updateData.latitude !== undefined && updateData.longitude !== undefined) {
+      dbUpdate.location = `POINT(${updateData.longitude} ${updateData.latitude})`;
     }
 
-    const dbUpdate: any = {};
-    if (parsed.data.serviceType) dbUpdate.service_type = parsed.data.serviceType;
-    if (parsed.data.description) dbUpdate.description = parsed.data.description;
-    if (parsed.data.municipality) dbUpdate.municipality = parsed.data.municipality;
-    if (parsed.data.urgency) dbUpdate.urgency = parsed.data.urgency;
-    if (parsed.data.visibilityRadius) dbUpdate.visibility_radius = parsed.data.visibilityRadius;
-    if (parsed.data.status) dbUpdate.status = parsed.data.status;
-    if (parsed.data.latitude !== undefined && parsed.data.longitude !== undefined) {
-      dbUpdate.location = `POINT(${parsed.data.longitude} ${parsed.data.latitude})`;
+    if (Object.keys(dbUpdate).length === 0) {
+      return c.json({ error: "No fields to update" }, 400);
     }
 
     const { data, error } = await supabase
       .from("demands")
       .update(dbUpdate)
       .eq("id", id)
+      .eq("contractor_id", auth.userId)
       .select()
       .single();
 
@@ -166,8 +155,44 @@ export const demandHandlers = {
     return c.json(mapDemandRow(data));
   },
 
-  "demands.listVisible": async (c: Context, input: unknown) => {
+  "demands.delete": async (c: Context, input: unknown) => {
     const auth = getAuthUser(c);
+    const parsed = deleteDemandSchema.safeParse(input);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid input", details: parsed.error.flatten() }, 400);
+    }
+
+    const { id } = parsed.data;
+    const supabase = getSupabaseAdmin();
+
+    const ownership = await getOwnedDemand(supabase, id, auth.userId);
+    if (ownership.error === "not_found") {
+      return c.json({ error: "Demand not found" }, 404);
+    }
+    if (ownership.error === "forbidden") {
+      return c.json(
+        {
+          error: "Forbidden",
+          reason: ownership.reason ?? "Only the demand creator can delete",
+        },
+        403
+      );
+    }
+
+    const { error } = await supabase
+      .from("demands")
+      .delete()
+      .eq("id", id)
+      .eq("contractor_id", auth.userId);
+
+    if (error) {
+      return c.json({ error: "Database error", details: error.message }, 500);
+    }
+
+    return c.json({ deleted: true, id });
+  },
+
+  "demands.listVisible": async (c: Context, input: unknown) => {
     const schema = z.object({
       latitude: z.number(),
       longitude: z.number(),
@@ -182,12 +207,6 @@ export const demandHandlers = {
     const { latitude, longitude, municipality } = parsed.data;
     const supabase = getSupabaseAdmin();
 
-    // Use PostGIS ST_DWithin
-    // ST_DWithin(location, ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography, visibility_radius * 1000)
-    // In Supabase, we can use a raw filter or a stored procedure (RPC)
-    // Raw filter with PostGIS is tricky via .filter(). 
-    // Recommended approach for spatial in Supabase is RPC.
-    
     const { data, error } = await supabase.rpc("get_visible_demands", {
       user_lat: latitude,
       user_lng: longitude,

@@ -1,72 +1,106 @@
-import { useState } from "react";
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { useRpc } from "../../../hooks/use-rpc";
+import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useLocation } from "../../../hooks/use-location";
 import { serviceCategories, ServiceCategory } from "@amauc/shared";
+import { theme, useToast } from "../../../components";
 
 export default function ProviderSetupScreen() {
   const router = useRouter();
-  const { callRpc } = useRpc();
-  
+  const { callRpc } = useRpcWithDevMode();
+  const { showToast } = useToast();
+  const isSavingRef = useRef(false);
+
   const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { location, loading: locationLoading } = useLocation();
+
+  useEffect(() => {
+    let mounted = true;
+    const loadProfile = async () => {
+      try {
+        const profile = await callRpc<{ serviceCategories?: ServiceCategory[] }>("identity.getProfile");
+        if (mounted && profile?.serviceCategories) {
+          setSelectedCategories(profile.serviceCategories);
+        }
+      } catch (error) {
+        console.error("Failed to load profile", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    void loadProfile();
+    return () => {
+      mounted = false;
+    };
+  }, [callRpc]);
 
   const toggleCategory = (cat: ServiceCategory) => {
+    if (loading) return;
     if (selectedCategories.includes(cat)) {
-      setSelectedCategories(selectedCategories.filter(c => c !== cat));
+      setSelectedCategories(selectedCategories.filter((c) => c !== cat));
     } else {
       setSelectedCategories([...selectedCategories, cat]);
     }
   };
 
   const handleSave = async () => {
+    if (isSavingRef.current) return;
+
     if (selectedCategories.length === 0) {
-      Alert.alert("Erro", "Selecione pelo menos uma categoria.");
+      showToast("Selecione pelo menos uma categoria.", "error");
       return;
     }
 
-    setLoading(true);
-    try {
-      // Mock location for Concórdia/SC
-      const latitude = -27.23;
-      const longitude = -52.03;
+    if (!location) {
+      showToast("Aguardando localização...", "error");
+      return;
+    }
 
-      await callRpc("identity.updateProviderProfile", {
-        latitude,
-        longitude,
-        serviceCategories: selectedCategories
+    isSavingRef.current = true;
+    setLoading(true);
+
+    try {
+      await callRpc("identity.updateRoles", {
+        isContractor: true,
+        isProvider: true,
       });
 
-      Alert.alert("Sucesso", "Perfil atualizado! Agora você pode ser encontrado por contratantes.", [
-        { text: "OK", onPress: () => router.back() }
-      ]);
+      await callRpc("identity.updateProviderProfile", {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        serviceCategories: selectedCategories,
+      });
+
+      showToast("Perfil atualizado! Agora você pode ser encontrado por contratantes.", "success");
+      router.replace("/");
     } catch (error: any) {
-      Alert.alert("Erro ao salvar", error.message);
-    } finally {
+      isSavingRef.current = false;
       setLoading(false);
+      showToast(error.message, "error");
     }
   };
 
   return (
     <ScrollView style={styles.container}>
       <Stack.Screen options={{ title: "Configurar Perfil" }} />
-      
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Suas Categorias</Text>
         <Text style={styles.sectionSubtitle}>Selecione os serviços que você oferece</Text>
-        
+
         <View style={styles.grid}>
           {serviceCategories.map((cat) => {
             const isSelected = selectedCategories.includes(cat as ServiceCategory);
             return (
-              <TouchableOpacity 
-                key={cat} 
+              <TouchableOpacity
+                key={cat}
                 style={[styles.chip, isSelected && styles.chipSelected]}
                 onPress={() => toggleCategory(cat as ServiceCategory)}
+                disabled={loading}
               >
-                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                  {cat}
-                </Text>
+                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{cat}</Text>
               </TouchableOpacity>
             );
           })}
@@ -83,12 +117,8 @@ export default function ProviderSetupScreen() {
         </View>
       </View>
 
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.saveBtn}
-          onPress={handleSave}
-          disabled={loading}
-        >
+      <View style={styles.footer} pointerEvents={loading ? "none" : "auto"}>
+        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={loading}>
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -135,8 +165,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   chipSelected: {
-    backgroundColor: "#116530",
-    borderColor: "#116530",
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   chipText: {
     fontSize: 14,
@@ -155,7 +185,7 @@ const styles = StyleSheet.create({
   },
   locationText: {
     fontSize: 16,
-    color: "#116530",
+    color: theme.colors.primary,
     fontWeight: "700",
   },
   footer: {
@@ -163,7 +193,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   saveBtn: {
-    backgroundColor: "#116530",
+    backgroundColor: theme.colors.primary,
     padding: 18,
     borderRadius: 12,
     alignItems: "center",

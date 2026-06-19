@@ -1,91 +1,19 @@
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Context } from "hono";
 import { getAuthUser } from "../middleware/clerk.js";
-
-const rolesUpdateSchema = z.object({
-  isContractor: z.boolean(),
-  isProvider: z.boolean(),
-});
-
-const serviceCategories = [
-  "Roçada / Capina",
-  "Diarista / Faxina",
-  "Operador de Máquina Agrícola",
-  "Serviços Gerais / Pequenos Reparos",
-  "Pedreiro / Servente",
-  "Pintura",
-  "Eletricista / Encanador",
-  "Cuidado com Animais",
-] as const;
-
-const updateProviderProfileSchema = z.object({
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
-  serviceCategories: z.array(z.enum(serviceCategories)),
-});
+import { getSupabaseAdmin } from "../lib/supabase.js";
+import {
+  getProfileByClerkUserId,
+  upsertRoles,
+} from "../lib/profile.js";
+import {
+  profileRoleFlagsSchema,
+  updateProviderProfileSchema,
+} from "@amauc/shared";
 
 const providerOnlyInputSchema = z.object({
   message: z.string().optional(),
 });
-
-type ProfileRow = {
-  clerk_user_id: string;
-  is_contractor: boolean;
-  is_provider: boolean;
-};
-
-function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
-  }
-  return createClient(url, serviceRoleKey);
-}
-
-async function getProfileByClerkUserId(userId: string) {
-  const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("clerk_user_id, is_contractor, is_provider")
-    .eq("clerk_user_id", userId)
-    .maybeSingle<ProfileRow>();
-
-  if (error) {
-    throw error;
-  }
-
-  return (
-    data ?? {
-      clerk_user_id: userId,
-      is_contractor: true,
-      is_provider: false,
-    }
-  );
-}
-
-async function upsertRoles(userId: string, payload: z.infer<typeof rolesUpdateSchema>) {
-  const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase
-    .from("profiles")
-    .upsert(
-      {
-        clerk_user_id: userId,
-        is_contractor: payload.isContractor,
-        is_provider: payload.isProvider,
-      },
-      { onConflict: "clerk_user_id" }
-    )
-    .select("clerk_user_id, is_contractor, is_provider")
-    .single<ProfileRow>();
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-}
 
 export const identityHandlers = {
   "identity.getProfile": async (c: Context) => {
@@ -95,11 +23,12 @@ export const identityHandlers = {
       clerkUserId: profile.clerk_user_id,
       isContractor: profile.is_contractor,
       isProvider: profile.is_provider,
+      serviceCategories: profile.service_categories ?? [],
     });
   },
   "identity.updateRoles": async (c: Context, input: unknown) => {
     const auth = getAuthUser(c);
-    const parsed = rolesUpdateSchema.safeParse(input);
+    const parsed = profileRoleFlagsSchema.safeParse(input);
     if (!parsed.success) {
       return c.json({ error: "Invalid input", details: parsed.error.flatten() }, 400);
     }

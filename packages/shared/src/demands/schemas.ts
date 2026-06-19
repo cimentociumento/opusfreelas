@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const demandStatusSchema = z.enum(["aberta", "em_contato", "encerrada"]);
+export const demandStatusSchema = z.enum(["aberta", "em_contato", "concluida", "cancelada", "encerrada"]);
 export type DemandStatus = z.infer<typeof demandStatusSchema>;
 
 export const demandUrgencySchema = z.enum(["baixa", "media", "alta", "urgente_hoje"]);
@@ -23,6 +23,18 @@ export const updateDemandSchema = createDemandSchema.partial().extend({
 });
 
 export type UpdateDemandInput = z.infer<typeof updateDemandSchema>;
+
+export const updateDemandRpcSchema = updateDemandSchema.extend({
+  id: z.string().uuid(),
+});
+
+export type UpdateDemandRpcInput = z.infer<typeof updateDemandRpcSchema>;
+
+export const deleteDemandSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export type DeleteDemandInput = z.infer<typeof deleteDemandSchema>;
 
 export const demandResponseSchema = z.object({
   id: z.string().uuid(),

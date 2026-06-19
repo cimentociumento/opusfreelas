@@ -1,24 +1,7 @@
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
 import type { Context } from "hono";
-
-const serviceCategories = [
-  "Roçada / Capina",
-  "Diarista / Faxina",
-  "Operador de Máquina Agrícola",
-  "Serviços Gerais / Pequenos Reparos",
-  "Pedreiro / Servente",
-  "Pintura",
-  "Eletricista / Encanador",
-  "Cuidado com Animais",
-] as const;
-
-const providerSearchSchema = z.object({
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
-  category: z.enum(serviceCategories).optional(),
-  radius: z.number().int().min(1).max(200).default(50),
-});
+import { getSupabaseAdmin } from "../lib/supabase.js";
+import { providerSearchSchema } from "@amauc/shared";
 
 type ProviderResult = {
   clerkUserId: string;
@@ -26,15 +9,6 @@ type ProviderResult = {
   serviceCategories: string[];
   distanceMeters: number;
 };
-
-function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
-  }
-  return createClient(url, serviceRoleKey);
-}
 
 export const discoveryHandlers = {
   "discovery.searchProviders": async (c: Context, input: unknown) => {

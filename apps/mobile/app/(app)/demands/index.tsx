@@ -1,20 +1,24 @@
 import { useEffect, useState, useCallback } from "react";
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  FlatList, 
-  TouchableOpacity, 
+import {
+  StyleSheet,
+  Text,
+  View,
+  FlatList,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
 } from "react-native";
-import { Stack, Link, useRouter } from "expo-router";
-import { useRpc } from "../../../hooks/use-rpc";
+import { Stack, useRouter } from "expo-router";
+import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
+import { isDemandOwner } from "../../../lib/auth-constants";
 import { DemandResponse } from "@amauc/shared";
+import { Card, Button, theme, useToast } from "../../../components";
 
 export default function MyDemandsScreen() {
   const router = useRouter();
-  const { callRpc } = useRpc();
+  const { callRpc } = useRpcWithDevMode();
+  const { userId: currentUserId, isReady: isAuthReady } = useEffectiveUserId();
+  const { showToast } = useToast();
   
   const [demands, setDemands] = useState<DemandResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,49 +45,80 @@ export default function MyDemandsScreen() {
     fetchDemands();
   };
 
-  const renderItem = ({ item }: { item: DemandResponse }) => (
-    <TouchableOpacity 
-      style={styles.demandCard}
-      onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}
-    >
+  const renderItem = ({ item }: { item: DemandResponse }) => {
+    const isOwner = isAuthReady && isDemandOwner(item.contractorId, currentUserId);
+    const isClosed = ["concluida", "cancelada", "encerrada"].includes(item.status);
+
+    return (
+    <Card variant="elevated" style={styles.demandCard}>
       <View style={styles.demandHeader}>
         <Text style={styles.serviceType}>{item.serviceType}</Text>
         <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
-          <Text style={styles.statusText}>{item.status}</Text>
+          <Text style={styles.statusText}>{getStatusDisplay(item.status)}</Text>
         </View>
       </View>
-      
+
       <Text style={styles.description} numberOfLines={2}>
         {item.description}
       </Text>
-      
+
       <View style={styles.demandFooter}>
-        <Text style={styles.footerText}>{item.municipality}</Text>
-        <Text style={styles.footerText}>•</Text>
-        <Text style={styles.footerText}>{item.urgency}</Text>
+        <Text style={styles.footerText}>📍 {item.municipality}</Text>
+        <Text style={styles.footerText}>⚡ {getUrgencyDisplay(item.urgency)}</Text>
       </View>
-    </TouchableOpacity>
-  );
+
+      <View style={styles.actions}>
+        <Button
+          title="Ver Detalhes"
+          variant="primary"
+          size="sm"
+          style={styles.actionBtn}
+          onPress={() => router.push({ pathname: "/demands/[id]", params: { id: item.id } })}
+        />
+      </View>
+    </Card>
+    );
+  };
+
+  const getStatusDisplay = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      "aberta": "🟢 Aberta",
+      "em_contato": "🟡 Em Contato", 
+      "concluida": "✅ Concluida",
+      "cancelada": "❌ Cancelada",
+      "encerrada": "🔴 Encerrada"
+    };
+    return statusMap[status] || status;
+  };
+
+  const getUrgencyDisplay = (urgency: string) => {
+    const urgencyMap: { [key: string]: string } = {
+      "baixa": "Baixa",
+      "media": "Média",
+      "alta": "Alta", 
+      "urgente_hoje": "Urgente"
+    };
+    return urgencyMap[urgency] || urgency;
+  };
 
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ 
         title: "Minhas Demandas",
         headerRight: () => (
-          <TouchableOpacity
-            style={styles.addButton}
+          <Button
+            title="+"
+            variant="primary"
+            size="sm"
             onPress={() => router.push("/demands/create")}
-            accessibilityRole="button"
-            accessibilityLabel="Nova demanda"
-          >
-            <Text style={styles.addButtonText}>+</Text>
-          </TouchableOpacity>
+          />
         )
       }} />
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#116530" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Carregando demandas...</Text>
         </View>
       ) : (
         <FlatList
@@ -92,15 +127,25 @@ export default function MyDemandsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              colors={[theme.colors.primary]}
+            />
           }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>Você ainda não publicou nenhuma demanda.</Text>
-              <Link href="/demands/create" style={styles.emptyLink}>
-                Publicar minha primeira demanda
-              </Link>
-            </View>
+            <Card style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>📝 Nenhuma demanda publicada</Text>
+              <Text style={styles.emptySubtitle}>
+                Comece publicando sua primeira demanda para encontrar profissionais
+              </Text>
+              <Button
+                title="🚀 Publicar Primeira Demanda"
+                variant="primary"
+                size="lg"
+                onPress={() => router.push("/demands/create")}
+              />
+            </Card>
           }
         />
       )}
@@ -111,95 +156,88 @@ export default function MyDemandsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: theme.colors.background,
   },
   list: {
-    padding: 16,
-    gap: 12,
+    padding: theme.spacing.md,
+    gap: theme.spacing.md,
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    gap: theme.spacing.md,
+  },
+  loadingText: {
+    ...theme.typography.body1,
+    color: theme.colors.textSecondary,
   },
   demandCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#eee",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    marginBottom: theme.spacing.md,
   },
   demandHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: theme.spacing.md,
   },
   serviceType: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#116530",
+    ...theme.typography.h3,
+    color: theme.colors.primary,
+    flex: 1,
   },
   statusBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
   },
-  status_aberta: { backgroundColor: "#e8f5e9" },
-  status_em_contato: { backgroundColor: "#fff3e0" },
-  status_encerrada: { backgroundColor: "#f5f5f5" },
+  status_aberta: { backgroundColor: theme.colors.primaryLight },
+  status_em_contato: { backgroundColor: theme.colors.secondaryLight },
+  status_concluida: { backgroundColor: theme.colors.successLight || "#e6fffa" },
+  status_cancelada: { backgroundColor: theme.colors.errorLight || "#fff5f5" },
+  status_encerrada: { backgroundColor: theme.colors.border },
   statusText: {
-    fontSize: 11,
-    fontWeight: "600",
-    textTransform: "uppercase",
+    ...theme.typography.caption,
+    fontWeight: "700",
+    color: theme.colors.text,
   },
   description: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 12,
+    ...theme.typography.body2,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
     lineHeight: 20,
   },
   demandFooter: {
     flexDirection: "row",
-    gap: 8,
+    justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: theme.spacing.md,
   },
   footerText: {
-    fontSize: 12,
-    color: "#999",
-    textTransform: "capitalize",
+    ...theme.typography.caption,
+    color: theme.colors.textSecondary,
   },
-  addButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#116530",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 8,
+  actions: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
   },
-  addButtonText: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "700",
-    lineHeight: 24,
+  actionBtn: {
+    flex: 1,
   },
   emptyState: {
-    padding: 40,
+    padding: theme.spacing.xl,
     alignItems: "center",
-    gap: 12,
+    gap: theme.spacing.md,
   },
-  emptyText: {
+  emptyTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+  },
+  emptySubtitle: {
+    ...theme.typography.body1,
+    color: theme.colors.textSecondary,
     textAlign: "center",
-    color: "#666",
-  },
-  emptyLink: {
-    color: "#116530",
-    fontWeight: "600",
+    marginBottom: theme.spacing.lg,
   },
 });
