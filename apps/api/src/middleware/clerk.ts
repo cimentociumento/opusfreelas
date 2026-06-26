@@ -1,4 +1,4 @@
-import { createClerkClient } from "@clerk/backend";
+import { createClerkClient, verifyToken } from "@clerk/backend";
 import type { Context, Next } from "hono";
 
 export type AuthUser = {
@@ -58,19 +58,25 @@ export async function requireClerkAuth(c: Context, next: Next) {
 
   const clerk = getClerkClient();
   const authorizedParties = getAuthorizedParties();
-  const requestState = await clerk.authenticateRequest(c.req.raw, {
-    ...(authorizedParties.length > 0 ? { authorizedParties } : {}),
-    jwtKey: process.env.CLERK_JWT_KEY || undefined,
-  });
+  try {
+    const verified = await verifyToken(token, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+      ...(authorizedParties.length > 0 ? { authorizedParties } : {}),
+      jwtKey: process.env.CLERK_JWT_KEY || undefined,
+    });
 
-  if (!requestState.isSignedIn || !requestState.toAuth().userId) {
+    if (!verified || !verified.sub) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    c.set(authUserKey, {
+      userId: verified.sub,
+      sessionId: typeof verified.sid === "string" ? verified.sid : null,
+    } satisfies AuthUser);
+  } catch (error) {
+    console.error("Clerk token verification failed:", error);
     return c.json({ error: "Unauthorized" }, 401);
   }
-
-  c.set(authUserKey, {
-    userId: requestState.toAuth().userId,
-    sessionId: requestState.toAuth().sessionId ?? null,
-  } satisfies AuthUser);
 
   await next();
 }

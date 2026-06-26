@@ -9,12 +9,28 @@ import { Redirect, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-function toBrazilE164(phone: string) {
-  if (phone.trim().startsWith("+")) {
-    return `+${phone.replace(/\D/g, "")}`;
+function formatE164(phone: string) {
+  let trimmed = phone.trim();
+
+  // Trata prefixo internacional 00 (ex: 001 para EUA)
+  if (trimmed.startsWith("00")) {
+    trimmed = "+" + trimmed.slice(2);
   }
 
-  let digits = phone.replace(/\D/g, "");
+  if (trimmed.startsWith("+")) {
+    let digits = trimmed.replace(/\D/g, "");
+    if (digits.startsWith("550")) {
+      digits = "55" + digits.slice(3);
+    }
+    return `+${digits}`;
+  }
+
+  let digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 0) return "";
+
+  if (digits.startsWith("0")) {
+    digits = digits.replace(/^0+/, "");
+  }
 
   if (!digits.startsWith("55")) {
     digits = `55${digits}`;
@@ -115,10 +131,10 @@ export default function SignInScreen() {
       await signUp.update({ legalAccepted: true });
     }
 
-    // if (signUp.status === "complete") {
-    //   await activateClerkSession(signUp.createdSessionId);
-    //   return;
-    // }
+    if (signUp.status === "complete") {
+      await activateClerkSession(signUp.createdSessionId);
+      return;
+    }
 
     throw new Error(`Campos faltando: ${JSON.stringify(signUp.missingFields)}`);
   }
@@ -130,12 +146,12 @@ export default function SignInScreen() {
     setError(null);
     setCode("");
 
-    const phone = toBrazilE164(phoneInput);
+    const phone = formatE164(phoneInput);
 
     try {
       await signUp.create({
         phoneNumber: phone,
-        legalAccepted: true, 
+        legalAccepted: true,
       });
       await signUp.preparePhoneNumberVerification({ strategy: "phone_code" })
 
@@ -319,12 +335,12 @@ export default function SignInScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Entrar com telefone</Text>
-      <Text style={styles.subtitle}>Use seu numero em formato brasileiro (+55).</Text>
+      <Text style={styles.subtitle}>Insira seu número com DDD ou código do país (ex: +55 para Brasil).</Text>
 
       <TextInput
         value={phoneInput}
         onChangeText={setPhoneInput}
-        placeholder="(49) 99999-9999"
+        placeholder="+55 49 99999-9999"
         keyboardType="phone-pad"
         autoCapitalize="none"
         editable={!sent}
