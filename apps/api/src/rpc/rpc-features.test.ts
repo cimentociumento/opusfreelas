@@ -168,8 +168,8 @@ describe("RPC Features (Demands & Discovery)", () => {
 
     it("lists my demands", async () => {
       const mockDemands = [
-        { id: "d1", contractor_id: authState.userId, service_type: "Roçada" },
-        { id: "d2", contractor_id: authState.userId, service_type: "Pintura" },
+        { id: "d1", contractor_id: authState.userId, service_type: "Roçada", location: { coordinates: [-52.03, -27.23] }, urgency: "media", status: "aberta", visibility_radius: 10, created_at: "2026-06-19T00:00:00Z", updated_at: "2026-06-19T00:00:00Z" },
+        { id: "d2", contractor_id: authState.userId, service_type: "Pintura", location: { coordinates: [-52.03, -27.23] }, urgency: "media", status: "aberta", visibility_radius: 10, created_at: "2026-06-19T00:00:00Z", updated_at: "2026-06-19T00:00:00Z" },
       ];
 
       fromMock.mockImplementation(() => ({

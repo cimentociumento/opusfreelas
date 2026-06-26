@@ -31,7 +31,13 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permita que o Opus Freelas acesse sua localização para mostrar serviços e profissionais próximos."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

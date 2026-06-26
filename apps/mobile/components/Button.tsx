@@ -13,7 +13,7 @@ import { theme } from "./theme";
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: "primary" | "secondary" | "outline" | "ghost";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
   size?: "sm" | "md" | "lg";
   disabled?: boolean;
   loading?: boolean;
@@ -65,6 +65,11 @@ export function Button({
           ...baseStyle,
           backgroundColor: "transparent",
         };
+      case "danger":
+        return {
+          ...baseStyle,
+          backgroundColor: disabled ? theme.colors.border : theme.colors.error,
+        };
       default:
         return baseStyle;
     }
@@ -78,6 +83,7 @@ export function Button({
     switch (variant) {
       case "primary":
       case "secondary":
+      case "danger":
         return {
           ...baseTextStyle,
           color: "#fff",

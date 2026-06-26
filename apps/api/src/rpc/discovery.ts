@@ -1,21 +1,14 @@
-import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";  
 import type { Context } from "hono";
-import { getAuthUser } from "../middleware/clerk.js";
-import { 
-  providerSearchSchema, 
-  ProviderResult,
-  serviceCategorySchema
-} from "@amauc/shared";
+import { getSupabaseAdmin } from "../lib/supabase.js";
+import { providerSearchSchema } from "@amauc/shared";
 
-function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
-  }
-  return createClient(url, serviceRoleKey);
-}
+type ProviderResult = {
+  clerkUserId: string;
+  isProvider: boolean;
+  serviceCategories: string[];
+  distanceMeters: number;
+};
 
 export const discoveryHandlers = {
   "discovery.searchProviders": async (c: Context, input: unknown) => {

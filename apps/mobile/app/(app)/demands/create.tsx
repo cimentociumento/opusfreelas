@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,11 +8,14 @@ import {
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useLocation } from "../../../hooks/use-location";
 import {
   CreateDemandInput,
   DemandResponse,
+  DemandUrgency,
   createDemandSchema,
   demandUrgencySchema,
+  serviceCategories,
 } from "@amauc/shared";
 import { Card, Button, theme, useToast } from "../../../components";
 
@@ -20,23 +23,39 @@ export default function CreateDemandScreen() {
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
   const { showToast } = useToast();
+  const { location, loading: locationLoading } = useLocation();
   const isSubmittingRef = useRef(false);
   
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState<CreateDemandInput>({
+  const [form, setForm] = useState({
     serviceType: "",
     description: "",
-    municipality: "Concórdia", // Default for AMAUC
-    latitude: -27.23, // Default coords for Concórdia
-    longitude: -52.02,
-    urgency: "media",
+    municipality: location.municipality,
+    urgency: "media" as DemandUrgency,
     visibilityRadius: 10,
   });
+
+  // Update municipality in form when location loads
+  useEffect(() => {
+    if (!locationLoading && form.municipality === "Concórdia" && location.municipality !== "Concórdia") {
+      setForm(prev => ({ ...prev, municipality: location.municipality }));
+    }
+  }, [location.municipality, locationLoading]);
 
   const handleSubmit = async () => {
     if (isSubmittingRef.current) return;
 
-    const parsed = createDemandSchema.safeParse(form);
+    if (!form.serviceType.trim() || !form.description.trim() || !form.municipality.trim()) {
+      showToast("Preencha todos os campos obrigatórios.", "error");
+      return;
+    }
+
+    const parsed = createDemandSchema.safeParse({
+        ...form,
+        latitude: location.latitude,
+        longitude: location.longitude,
+    });
+    
     if (!parsed.success) {
       const firstIssue = parsed.error.issues[0];
       showToast(firstIssue?.message ?? "Preencha todos os campos corretamente.", "error");
@@ -84,13 +103,19 @@ export default function CreateDemandScreen() {
       <View style={styles.form}>
         <Card style={styles.formCard}>
           <Text style={styles.label}>🛠️ Tipo de Serviço</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex: Capina, Pintura, Diarista"
-            value={form.serviceType}
-            onChangeText={(text) => setForm({ ...form, serviceType: text })}
-            editable={!loading}
-          />
+          <View style={styles.chipRow}>
+            {serviceCategories.map((cat) => (
+              <Button
+                key={cat}
+                title={cat}
+                variant={form.serviceType === cat ? "primary" : "outline"}
+                size="sm"
+                style={styles.categoryChip}
+                onPress={() => setForm({ ...form, serviceType: cat })}
+                disabled={loading}
+              />
+            ))}
+          </View>
 
           <Text style={styles.label}>📝 Descrição do serviço</Text>
           <TextInput
@@ -218,6 +243,9 @@ const styles = StyleSheet.create({
   urgencyChip: {
     flex: 1,
     minWidth: 80,
+  },
+  categoryChip: {
+    marginBottom: theme.spacing.sm,
   },
   radiusChip: {
     flex: 1,

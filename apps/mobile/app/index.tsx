@@ -96,6 +96,13 @@ function SignedInContent() {
             style={styles.actionButton}
             onPress={() => router.push("/profile/provider-setup")}
           />
+          <Button
+            title="📋 Vagas na Região"
+            variant="secondary"
+            size="lg"
+            style={styles.actionButton}
+            onPress={() => router.push("/demands/available")}
+          />
         </Card>
       </View>
 

@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useLocation } from "../../../hooks/use-location";
 import { serviceCategories, ServiceCategory } from "@amauc/shared";
 import { theme, useToast } from "../../../components";
 
@@ -12,7 +13,28 @@ export default function ProviderSetupScreen() {
   const isSavingRef = useRef(false);
 
   const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { location, loading: locationLoading } = useLocation();
+
+  useEffect(() => {
+    let mounted = true;
+    const loadProfile = async () => {
+      try {
+        const profile = await callRpc<{ serviceCategories?: ServiceCategory[] }>("identity.getProfile");
+        if (mounted && profile?.serviceCategories) {
+          setSelectedCategories(profile.serviceCategories);
+        }
+      } catch (error) {
+        console.error("Failed to load profile", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    void loadProfile();
+    return () => {
+      mounted = false;
+    };
+  }, [callRpc]);
 
   const toggleCategory = (cat: ServiceCategory) => {
     if (loading) return;
@@ -31,21 +53,23 @@ export default function ProviderSetupScreen() {
       return;
     }
 
+    if (!location) {
+      showToast("Aguardando localização...", "error");
+      return;
+    }
+
     isSavingRef.current = true;
     setLoading(true);
 
     try {
-      const latitude = -27.23;
-      const longitude = -52.03;
-
       await callRpc("identity.updateRoles", {
         isContractor: true,
         isProvider: true,
       });
 
       await callRpc("identity.updateProviderProfile", {
-        latitude,
-        longitude,
+        latitude: location.latitude,
+        longitude: location.longitude,
         serviceCategories: selectedCategories,
       });
 

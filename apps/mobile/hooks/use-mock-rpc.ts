@@ -98,6 +98,24 @@ export function useMockRpc() {
         
         return filteredProviders as T;
 
+      case "demands.listVisible":
+        return [
+          {
+            id: "mock_demand_1",
+            contractorId: "other_user",
+            serviceType: "Roçada / Capina",
+            description: "Preciso roçar 2 lotes no bairro dos estados. Mato alto.",
+            municipality: "Concórdia",
+            latitude: -27.23,
+            longitude: -52.02,
+            urgency: "alta",
+            visibilityRadius: 20,
+            status: "aberta",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ] as T;
+
       case "demands.listMyDemands":
         return mockDemands as T;
 
@@ -169,6 +187,14 @@ export function useMockRpc() {
         mockDemands.splice(index, 1);
         return { deleted: true, id } as T;
       }
+
+      case "identity.getProfile":
+        return {
+          clerkUserId: "current_user",
+          isContractor: true,
+          isProvider: false,
+          serviceCategories: [],
+        } as T;
 
       case "identity.updateRoles":
         return {

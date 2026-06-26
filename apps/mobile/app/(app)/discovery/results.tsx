@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useLocation } from "../../../hooks/use-location";
 import { ProviderResult } from "@amauc/shared";
 import { Card, Button, theme } from "../../../components";
 
@@ -19,31 +20,35 @@ export default function DiscoveryResultsScreen() {
   const [results, setResults] = useState<ProviderResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { location, loading: locationLoading } = useLocation();
 
   const fetchResults = useCallback(async () => {
+    if (!location) return;
+
     try {
-      // Mock location for AMAUC (Concórdia area) if geolocation is not yet implemented
-      const latitude = -27.23;
-      const longitude = -52.03;
-      
+      setLoading(true);
       const data = await callRpc<ProviderResult[]>("discovery.searchProviders", {
-        latitude,
-        longitude,
-        category: category?.trim() || undefined,
-        radius: 50
+        latitude: location.latitude,
+        longitude: location.longitude,
+        category: category !== "Todas" ? category : undefined,
+        radius: 50,
       });
-      setResults(data);
+
+      setResults(data || []);
     } catch (error) {
-      console.error("Error searching providers:", error);
+      console.error("Failed to search providers:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [category, callRpc]);
+  }, [category, callRpc, location]);
 
+  // Load results whenever location or category changes
   useEffect(() => {
-    fetchResults();
-  }, [fetchResults]);
+    if (!locationLoading) {
+      void fetchResults();
+    }
+  }, [fetchResults, locationLoading]);
 
   const renderItem = ({ item }: { item: ProviderResult }) => (
     <Card variant="elevated" style={styles.card}>

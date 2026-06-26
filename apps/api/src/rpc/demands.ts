@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
 import {
   createDemandSchema,
   updateDemandRpcSchema,
@@ -7,35 +6,8 @@ import {
 } from "@amauc/shared";
 import type { Context } from "hono";
 import { getAuthUser } from "../middleware/clerk.js";
-
-function getSupabaseAdmin() {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRoleKey) {
-    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required");
-  }
-  return createClient(url, serviceRoleKey);
-}
-
-function mapDemandRow(row: any) {
-  const lng = row.location?.coordinates?.[0] ?? 0;
-  const lat = row.location?.coordinates?.[1] ?? 0;
-
-  return {
-    id: row.id,
-    contractorId: row.contractor_id,
-    serviceType: row.service_type,
-    description: row.description,
-    municipality: row.municipality,
-    latitude: lat,
-    longitude: lng,
-    urgency: row.urgency,
-    visibilityRadius: row.visibility_radius,
-    status: row.status,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
+import { getSupabaseAdmin } from "../lib/supabase.js";
+import { mapDemandRow } from "../lib/demands-mapper.js";
 
 async function getOwnedDemand(supabase: ReturnType<typeof getSupabaseAdmin>, id: string, userId: string) {
   const { data: existing, error: fetchError } = await supabase
@@ -89,11 +61,6 @@ export const demandHandlers = {
       );
     }
 
-    // Use RPC or raw SQL for PostGIS insertion if possible, 
-    // but Supabase JS allows strings for geography in some versions or via explicit casting in RPC.
-    // Here we use a common pattern for PostGIS via Supabase: ST_SetSRID(ST_MakePoint(lng, lat), 4326)
-    // Since we don't have a custom RPC yet, we'll try standard insertion if geography is supported as GeoJSON/String
-    
     const { data, error } = await supabase
       .from("demands")
       .insert({
@@ -226,7 +193,6 @@ export const demandHandlers = {
   },
 
   "demands.listVisible": async (c: Context, input: unknown) => {
-    const auth = getAuthUser(c);
     const schema = z.object({
       latitude: z.number(),
       longitude: z.number(),
@@ -241,12 +207,6 @@ export const demandHandlers = {
     const { latitude, longitude, municipality } = parsed.data;
     const supabase = getSupabaseAdmin();
 
-    // Use PostGIS ST_DWithin
-    // ST_DWithin(location, ST_SetSRID(ST_MakePoint(lng, lat), 4326)::geography, visibility_radius * 1000)
-    // In Supabase, we can use a raw filter or a stored procedure (RPC)
-    // Raw filter with PostGIS is tricky via .filter(). 
-    // Recommended approach for spatial in Supabase is RPC.
-    
     const { data, error } = await supabase.rpc("get_visible_demands", {
       user_lat: latitude,
       user_lng: longitude,

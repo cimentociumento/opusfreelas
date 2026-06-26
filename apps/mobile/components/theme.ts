@@ -14,8 +14,10 @@ export const theme = {
     textLight: "#999999",
     border: "#e5e7eb",
     success: "#22c55e",
+    successLight: "#dcfce7",
     warning: "#f59e0b",
     error: "#ef4444",
+    errorLight: "#fee2e2",
   },
   spacing: {
     xs: 4,

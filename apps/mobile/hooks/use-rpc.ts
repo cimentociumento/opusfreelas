@@ -1,12 +1,13 @@
 // apps/web/hooks/use-rpc.ts
 import { useAuth } from "@clerk/clerk-expo";
 import { useCallback, useMemo } from "react";
+import { getApiBaseUrl } from "../lib/api-url";
 
 export function useRpc() {
   const { getToken } = useAuth();
 
   const apiBaseUrl = useMemo(() => {
-    return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    return getApiBaseUrl();
   }, []);
 
   const callRpc = useCallback(async <T = unknown>(

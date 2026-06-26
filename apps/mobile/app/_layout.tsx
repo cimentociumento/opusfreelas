@@ -47,7 +47,7 @@ function InitialLayout() {
 
   // Se o usuário já estiver logado, vai direto para o app
   if (isSignedIn) {
-    return <Redirect href="/(app)" />;
+    return <Redirect href={"/(app)" as any} />;
   }
 
   // Caso contrário, mostra as rotas de autenticação (sign-in, etc)
