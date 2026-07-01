@@ -17,7 +17,7 @@ export async function revokeOtherSessions(input: RevokeOthersInput) {
   }
 
   const clerk = createClerkClient({ secretKey });
-  const sessions = await clerk.sessions.getSessionList({ userId: [input.userId], limit: 100 });
+  const sessions = await clerk.sessions.getSessionList({ userId: input.userId, limit: 100 });
 
   const targets = sessions.data.filter((session) => session.id !== input.keepSessionId);
 

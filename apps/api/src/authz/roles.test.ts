@@ -16,14 +16,14 @@ const revokeMock = vi.fn(async () => ({}));
 
 vi.mock("@clerk/backend", () => ({
   createClerkClient: () => ({
-    authenticateRequest: async () => ({
-      isSignedIn: authState.isSignedIn,
-      toAuth: () => ({ userId: authState.userId, sessionId: authState.sessionId }),
-    }),
     sessions: {
       getSessionList: listMock,
       revokeSession: revokeMock,
     },
+  }),
+  verifyToken: vi.fn(async () => {
+    if (!authState.isSignedIn) return null;
+    return { sub: authState.userId, sid: authState.sessionId };
   }),
 }));
 
