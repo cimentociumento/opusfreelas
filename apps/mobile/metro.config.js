@@ -7,7 +7,7 @@ const workspaceRoot = path.resolve(projectRoot, "../..");
 const config = getDefaultConfig(projectRoot);
 
 // Configuração de monorepo recomendada pelo Expo
-config.watchFolders = [workspaceRoot];
+config.watchFolders = [...config.watchFolders, workspaceRoot];
 config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, "node_modules"),
   path.resolve(workspaceRoot, "node_modules"),

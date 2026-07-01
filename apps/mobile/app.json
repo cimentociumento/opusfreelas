@@ -37,7 +37,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Permita que o Opus Freelas acesse sua localização para mostrar serviços e profissionais próximos."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
