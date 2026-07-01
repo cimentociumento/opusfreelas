@@ -27,5 +27,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Run API typecheck
+        run: pnpm --filter @amauc/api typecheck
+
       - name: Run API tests
-        run: pnpm --filter @amauc/api vitest run
+        run: pnpm --filter @amauc/api test
+
+      - name: Run full monorepo test suite (shared build/test + mobile tests)
+        run: pnpm exec turbo run test
+
+      - name: Run mobile typecheck
+        run: pnpm exec turbo run typecheck
