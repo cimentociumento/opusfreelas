@@ -3,13 +3,19 @@ import { useDevelopmentMode } from "./use-development-mode";
 import { useRpc } from "./use-rpc";
 import { getApiBaseUrl } from "../lib/api-url";
 
-const DEV_BYPASS_TOKEN = process.env.EXPO_PUBLIC_DEV_BYPASS_TOKEN ?? "";
+function getDevBypassToken() {
+  // __DEV__ é substituído por um literal em build time; isso permite que o
+  // minificador elimine este branch (e o token) do bundle de produção.
+  if (!__DEV__) return "";
+  return process.env.EXPO_PUBLIC_DEV_BYPASS_TOKEN ?? "";
+}
 
 function useDevRpc() {
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
 
   const callRpc = useCallback(async <T = unknown>(procedure: string, input?: unknown): Promise<T> => {
-    if (!DEV_BYPASS_TOKEN) {
+    const devBypassToken = getDevBypassToken();
+    if (!devBypassToken) {
       throw new Error("EXPO_PUBLIC_DEV_BYPASS_TOKEN não configurado.");
     }
 
@@ -18,7 +24,7 @@ function useDevRpc() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${DEV_BYPASS_TOKEN}`,
+          Authorization: `Bearer ${devBypassToken}`,
         },
         body: JSON.stringify({ procedure, input: input ?? {} }),
       });
