@@ -122,7 +122,12 @@ export default function SignInScreen() {
     if (!signUp) throw new Error("Cadastro indisponivel. Tente novamente.");
     await signUp.create({ transfer: true });
 
-    if (signUp.status === "complete") {
+    // signUp e um recurso do Clerk mutado por referencia: le-lo atras de uma
+    // funcao evita que o TS aplique (incorretamente) a estreita feita antes do
+    // "await signUp.update", que nao reflete o valor apos a mutacao.
+    const readSignUpStatus = () => signUp.status;
+
+    if (readSignUpStatus() === "complete") {
       await activateClerkSession(signUp.createdSessionId);
       return;
     }
@@ -131,7 +136,7 @@ export default function SignInScreen() {
       await signUp.update({ legalAccepted: true });
     }
 
-    if (signUp.status === "complete") {
+    if (readSignUpStatus() === "complete") {
       await activateClerkSession(signUp.createdSessionId);
       return;
     }
@@ -149,11 +154,7 @@ export default function SignInScreen() {
     const phone = formatE164(phoneInput);
 
     try {
-      await signUp.create({
-        phoneNumber: phone,
-        legalAccepted: true,
-      });
-      await signUp.preparePhoneNumberVerification({ strategy: "phone_code" })
+      await signIn.create({ identifier: phone });
 
       if (signIn.status !== "needs_first_factor") {
         throw new Error(`Nao foi possivel iniciar a verificacao (${signIn.status ?? "desconhecido"}).`);
@@ -178,7 +179,7 @@ export default function SignInScreen() {
         sendError.errors.some((e) => e.code === "form_identifier_not_found")
       ) {
         try {
-          await signUp.create({ phoneNumber: phone });
+          await signUp.create({ phoneNumber: phone, legalAccepted: true });
           await signUp.preparePhoneNumberVerification({ strategy: "phone_code" });
           setPendingPhone(phone);
           setFlowType("signUp");
