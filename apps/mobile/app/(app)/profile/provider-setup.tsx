@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { StyleSheet, Text, View, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { useLocation } from "../../../hooks/use-location";
+import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { serviceCategories, ServiceCategory } from "@amauc/shared";
 import { theme, useToast } from "../../../components";
 
 export default function ProviderSetupScreen() {
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
+  const { isReady: isAuthReady } = useEffectiveUserId();
   const { showToast } = useToast();
   const isSavingRef = useRef(false);
 
@@ -17,6 +19,10 @@ export default function ProviderSetupScreen() {
   const { location, loading: locationLoading } = useLocation();
 
   useEffect(() => {
+    // Espera o modo dev/Clerk resolverem — senão o RPC dispara com o
+    // isDevMode inicial (falso) e cai no caminho Clerk sem sessão real.
+    if (!isAuthReady) return;
+
     let mounted = true;
     const loadProfile = async () => {
       try {
@@ -34,7 +40,7 @@ export default function ProviderSetupScreen() {
     return () => {
       mounted = false;
     };
-  }, [callRpc]);
+  }, [callRpc, isAuthReady]);
 
   const toggleCategory = (cat: ServiceCategory) => {
     if (loading) return;
@@ -94,14 +100,14 @@ export default function ProviderSetupScreen() {
           {serviceCategories.map((cat) => {
             const isSelected = selectedCategories.includes(cat as ServiceCategory);
             return (
-              <TouchableOpacity
+              <Pressable
                 key={cat}
                 style={[styles.chip, isSelected && styles.chipSelected]}
                 onPress={() => toggleCategory(cat as ServiceCategory)}
                 disabled={loading}
               >
                 <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{cat}</Text>
-              </TouchableOpacity>
+              </Pressable>
             );
           })}
         </View>
@@ -118,13 +124,13 @@ export default function ProviderSetupScreen() {
       </View>
 
       <View style={styles.footer} pointerEvents={loading ? "none" : "auto"}>
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={loading}>
+        <Pressable style={styles.saveBtn} onPress={handleSave} disabled={loading}>
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.saveBtnText}>Salvar Perfil</Text>
           )}
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </ScrollView>
   );

@@ -56,12 +56,26 @@ export async function requireClerkAuth(c: Context, next: Next) {
   }
   // ───────────────────────────────────────────────────────────────────────
 
-  const clerk = getClerkClient();
+  let clerk: ReturnType<typeof getClerkClient>;
+  try {
+    clerk = getClerkClient();
+  } catch (error) {
+    console.error("[clerk.requireClerkAuth] Configuração ausente:", error);
+    return c.json({ error: "Server misconfiguration" }, 500);
+  }
+
   const authorizedParties = getAuthorizedParties();
-  const requestState = await clerk.authenticateRequest(c.req.raw, {
-    ...(authorizedParties.length > 0 ? { authorizedParties } : {}),
-    jwtKey: process.env.CLERK_JWT_KEY || undefined,
-  });
+  let requestState: Awaited<ReturnType<typeof clerk.authenticateRequest>>;
+  try {
+    requestState = await clerk.authenticateRequest(c.req.raw, {
+      ...(authorizedParties.length > 0 ? { authorizedParties } : {}),
+      jwtKey: process.env.CLERK_JWT_KEY || undefined,
+    });
+  } catch (error) {
+    // Token inválido/expirado/malformado não é um erro de servidor — 401, não 500.
+    console.error("[clerk.requireClerkAuth] Token rejeitado:", error);
+    return c.json({ error: "Unauthorized" }, 401);
+  }
 
   if (!requestState.isSignedIn || !requestState.toAuth().userId) {
     return c.json({ error: "Unauthorized" }, 401);

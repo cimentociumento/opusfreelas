@@ -16,7 +16,15 @@ const handlers = {
 };
 
 export async function handleRpc(c: Context) {
-  const parseResult = rpcRequestSchema.safeParse(await c.req.json());
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch (error) {
+    console.error("[rpc.handleRpc] JSON inválido:", error);
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  const parseResult = rpcRequestSchema.safeParse(body);
   if (!parseResult.success) {
     return c.json({ error: "Invalid RPC envelope", details: parseResult.error.flatten() }, 400);
   }

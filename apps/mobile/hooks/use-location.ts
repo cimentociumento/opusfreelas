@@ -14,6 +14,28 @@ export const DEFAULT_LOCATION: LocationData = {
   municipality: "Concórdia",
 };
 
+const LOCATION_TIMEOUT_MS = 8000;
+
+// Alguns navegadores/SOs (ex.: Windows com Location Services desligado) nunca
+// chamam o callback de sucesso nem o de erro do getCurrentPosition, então o
+// timeout nativo sozinho não é confiável — força a resolução no nível do JS
+// para nunca deixar a tela presa em "carregando".
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Location request timed out")), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 export function useLocation() {
   const [location, setLocation] = useState<LocationData>(DEFAULT_LOCATION);
   const [loading, setLoading] = useState(true);
@@ -23,20 +45,26 @@ export function useLocation() {
     setLoading(true);
     setError(null);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await withTimeout(Location.requestForegroundPermissionsAsync(), LOCATION_TIMEOUT_MS);
       if (status !== "granted") {
         setError("Permissão de localização negada. Usando localização padrão.");
         setLocation(DEFAULT_LOCATION);
-        setLoading(false);
         return;
       }
 
-      const currentPosition = await Location.getCurrentPositionAsync({});
+      const currentPosition = await withTimeout(Location.getCurrentPositionAsync({}), LOCATION_TIMEOUT_MS);
       const { latitude, longitude } = currentPosition.coords;
 
-      // Reverse geocode to get municipality
-      const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
-      const municipality = geocode[0]?.subregion || geocode[0]?.city || DEFAULT_LOCATION.municipality;
+      // reverseGeocodeAsync não é suportado no Web (expo-location lança
+      // GeocoderError sempre) — mantém as coordenadas reais já obtidas em
+      // vez de descartá-las e cair no município padrão.
+      let municipality = DEFAULT_LOCATION.municipality;
+      try {
+        const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
+        municipality = geocode[0]?.subregion || geocode[0]?.city || DEFAULT_LOCATION.municipality;
+      } catch (geocodeErr) {
+        console.warn("Reverse geocode indisponível, mantendo coordenadas reais:", geocodeErr);
+      }
 
       setLocation({ latitude, longitude, municipality });
     } catch (err) {

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, ScrollView, Dimensions, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, ScrollView, Dimensions, Pressable } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { serviceCategories } from "@amauc/shared";
 import { Card, Button, theme } from "../../../components";
@@ -48,13 +48,13 @@ export default function DiscoveryScreen() {
             variant="elevated"
             style={styles.categoryCard}
           >
-            <TouchableOpacity onPress={() => handleCategorySelect(item)}>
+            <Pressable onPress={() => handleCategorySelect(item)}>
               <View style={styles.iconContainer}>
                 <Text style={styles.iconText}>{getCategoryIcon(item)}</Text>
               </View>
               <Text style={styles.categoryText}>{item}</Text>
               <Text style={styles.categorySubtext}>Ver profissionais</Text>
-            </TouchableOpacity>
+            </Pressable>
           </Card>
         ))}
       </View>

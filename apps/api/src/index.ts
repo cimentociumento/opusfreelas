@@ -28,7 +28,13 @@ app.post("/rpc", requireClerkAuth, async (c) => {
 
 app.post("/sessions/revoke-others", requireClerkAuth, async (c) => {
   const auth = getAuthUser(c);
-  const body = await c.req.json();
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch (error) {
+    console.error("[sessions.revoke-others] JSON inválido:", error);
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
   const response = await handleRevokeOthersRoute(auth.userId, body, auth.sessionId);
   return c.json(response.payload, response.status);
 });
