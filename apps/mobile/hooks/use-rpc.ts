@@ -54,5 +54,5 @@ export function useRpc() {
     return data as T;
   }, [apiBaseUrl, getToken]);
 
-  return { callRpc };
+  return useMemo(() => ({ callRpc }), [callRpc]);
 }

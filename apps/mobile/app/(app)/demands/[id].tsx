@@ -69,6 +69,13 @@ export default function DemandDetailsScreen() {
       return;
     }
 
+    // Espera o modo dev/Clerk resolverem — senão o RPC dispara com o
+    // isDevMode inicial (falso) e cai no caminho Clerk sem sessão real,
+    // o que faz esta tela mandar o usuário de volta por engano.
+    if (!isAuthReady) {
+      return;
+    }
+
     let cancelled = false;
 
     const loadDemand = async () => {
@@ -94,20 +101,19 @@ export default function DemandDetailsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, callRpc, router]);
+  }, [id, callRpc, router, isAuthReady]);
 
   const handleUpdateStatus = async (newStatus: "concluida" | "cancelada") => {
     if (!id) return;
 
     setUpdatingStatus(true);
     try {
-      const updated = await callRpc<DemandResponse>("demands.update", {
-        id,
-        status: newStatus,
-      });
-      setDemand(updated);
+      // Concluir/cancelar encerra o ciclo de vida da demanda: ela é excluída
+      // (não só marcada) e some da lista de "Minhas Demandas" ao voltar.
+      await callRpc<{ deleted: boolean; id: string }>("demands.delete", { id });
       const statusLabel = newStatus === "concluida" ? "concluída" : "cancelada";
-      showToast(`Demanda marcada como ${statusLabel}`, "success");
+      showToast(`Demanda marcada como ${statusLabel} e removida da lista`, "success");
+      router.back();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro ao atualizar status.";
       showToast(message, "error");

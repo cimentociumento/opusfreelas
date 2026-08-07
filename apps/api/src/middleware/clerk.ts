@@ -56,7 +56,14 @@ export async function requireClerkAuth(c: Context, next: Next) {
   }
   // ───────────────────────────────────────────────────────────────────────
 
-  const clerk = getClerkClient();
+  let clerk: ReturnType<typeof getClerkClient>;
+  try {
+    clerk = getClerkClient();
+  } catch (error) {
+    console.error("[clerk.requireClerkAuth] Configuração ausente:", error);
+    return c.json({ error: "Server misconfiguration" }, 500);
+  }
+
   const authorizedParties = getAuthorizedParties();
   try {
     const verified = await verifyToken(token, {

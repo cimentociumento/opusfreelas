@@ -1,5 +1,5 @@
 import React from "react";
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Animated, StyleSheet, Text, Pressable, View } from "react-native";
 import { useDevelopmentMode } from "../hooks/use-development-mode";
 import { theme } from "./theme";
 
@@ -17,15 +17,14 @@ export function DevModeToggle() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
+      <Pressable
         style={[styles.toggle, isDevMode && styles.toggleActive]}
         onPress={handleToggle}
-        activeOpacity={0.8}
       >
         <Animated.View style={[styles.toggleButton, { transform: [{ scale: scaleAnim }] }]}>
           <View style={[styles.toggleCircle, isDevMode && styles.toggleCircleActive]} />
         </Animated.View>
-      </TouchableOpacity>
+      </Pressable>
       <Text style={[styles.label, isDevMode && styles.labelActive]}>
         {isDevMode ? "🛠️ DEV" : "📱 PROD"}
       </Text>

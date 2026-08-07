@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
+import { StyleSheet, Text, View, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { useLocation } from "../../../hooks/use-location";
+import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { DemandResponse } from "@amauc/shared";
 import { Card, theme } from "../../../components";
 
@@ -10,6 +11,7 @@ export default function AvailableDemandsScreen() {
   const router = useRouter();
   const { callRpc } = useRpcWithDevMode();
   const { location, loading: locationLoading } = useLocation();
+  const { isReady: isAuthReady } = useEffectiveUserId();
 
   const [demands, setDemands] = useState<DemandResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,10 +37,11 @@ export default function AvailableDemandsScreen() {
   };
 
   useEffect(() => {
-    if (!locationLoading) {
+    // Espera localização E modo dev/Clerk resolverem antes do primeiro RPC.
+    if (!locationLoading && isAuthReady) {
       void fetchDemands();
     }
-  }, [locationLoading, location]);
+  }, [locationLoading, location, isAuthReady]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -63,7 +66,7 @@ export default function AvailableDemandsScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
+        <Pressable
           style={styles.detailsButton}
           onPress={() => {
             // TODO: Navigate to detail view if needed
@@ -72,7 +75,7 @@ export default function AvailableDemandsScreen() {
           }}
         >
           <Text style={styles.detailsButtonText}>Ver Detalhes</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </Card>
   );

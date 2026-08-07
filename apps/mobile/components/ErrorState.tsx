@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, Pressable, View } from "react-native";
 
 type ErrorStateProps = {
   message: string;
@@ -11,9 +11,9 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
       <Text style={styles.title}>Algo deu errado</Text>
       <Text style={styles.message}>{message}</Text>
       {onRetry ? (
-        <TouchableOpacity style={styles.button} onPress={onRetry} accessibilityRole="button">
+        <Pressable style={styles.button} onPress={onRetry} accessibilityRole="button">
           <Text style={styles.buttonText}>Tentar novamente</Text>
-        </TouchableOpacity>
+        </Pressable>
       ) : null}
     </View>
   );

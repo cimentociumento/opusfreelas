@@ -4,7 +4,7 @@ import {
   Text,
   View,
   Modal,
-  TouchableOpacity,
+  Pressable,
   ViewStyle,
   TextStyle,
 } from "react-native";
@@ -120,7 +120,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
 
             <View style={styles.buttonContainer}>
               {alertState_.buttons.map((button, index) => (
-                <TouchableOpacity
+                <Pressable
                   key={index}
                   style={[
                     styles.button,
@@ -137,7 +137,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                   >
                     {button.text}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
           </View>

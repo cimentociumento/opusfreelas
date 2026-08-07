@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
@@ -36,9 +37,19 @@ export default function MyDemandsScreen() {
     }
   }, [callRpc]);
 
-  useEffect(() => {
-    fetchDemands();
-  }, [fetchDemands]);
+  // useFocusEffect (não useEffect) para recarregar toda vez que a tela
+  // ganha foco — inclusive ao voltar de "Detalhes da Demanda" depois de
+  // concluir/cancelar (excluir) uma demanda, senão a lista ficaria com o
+  // item já excluído até um pull-to-refresh manual.
+  useFocusEffect(
+    useCallback(() => {
+      // Espera o modo dev (AsyncStorage) e o Clerk resolverem antes da
+      // primeira chamada — senão o RPC pode sair cedo demais com isDevMode
+      // ainda falso (valor inicial) e cair no caminho Clerk sem sessão real.
+      if (!isAuthReady) return;
+      fetchDemands();
+    }, [fetchDemands, isAuthReady])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);

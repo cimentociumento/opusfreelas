@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
+import { StyleSheet, Text, View, FlatList, ActivityIndicator } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { useLocation } from "../../../hooks/use-location";
+import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { ProviderResult } from "@amauc/shared";
 import { Card, Button, theme } from "../../../components";
 
@@ -16,7 +17,8 @@ export default function DiscoveryResultsScreen() {
   const category = paramToString(params.category);
   const router = useRouter();
   const { callRpc, isDevMode } = useRpcWithDevMode();
-  
+  const { isReady: isAuthReady } = useEffectiveUserId();
+
   const [results, setResults] = useState<ProviderResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,7 +32,7 @@ export default function DiscoveryResultsScreen() {
       const data = await callRpc<ProviderResult[]>("discovery.searchProviders", {
         latitude: location.latitude,
         longitude: location.longitude,
-        category: category !== "Todas" ? category : undefined,
+        category: category ? category : undefined,
         radius: 50,
       });
 
@@ -43,12 +45,13 @@ export default function DiscoveryResultsScreen() {
     }
   }, [category, callRpc, location]);
 
-  // Load results whenever location or category changes
+  // Load results whenever location ou categoria mudam — espera também o
+  // modo dev/Clerk resolverem antes do primeiro RPC.
   useEffect(() => {
-    if (!locationLoading) {
+    if (!locationLoading && isAuthReady) {
       void fetchResults();
     }
-  }, [fetchResults, locationLoading]);
+  }, [fetchResults, locationLoading, isAuthReady]);
 
   const renderItem = ({ item }: { item: ProviderResult }) => (
     <Card variant="elevated" style={styles.card}>

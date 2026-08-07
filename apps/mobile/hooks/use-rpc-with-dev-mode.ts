@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useDevelopmentMode } from "./use-development-mode";
 import { useRpc } from "./use-rpc";
 import { getApiBaseUrl } from "../lib/api-url";
@@ -49,7 +49,7 @@ function useDevRpc() {
     }
   }, [apiBaseUrl]);
 
-  return { callRpc };
+  return useMemo(() => ({ callRpc }), [callRpc]);
 }
 
 export function useRpcWithDevMode() {
@@ -57,17 +57,24 @@ export function useRpcWithDevMode() {
   const devRpc = useDevRpc();
   const realRpc = useRpc();
 
-  const callRpc = useCallback(
-    async <T = unknown>(procedure: string, input?: unknown): Promise<T> => {
-      if (isDevMode) {
-        console.log(`🛠️ [DEV] RPC → Supabase real: ${procedure}`);
-        return devRpc.callRpc<T>(procedure, input);
-      }
-      console.log(`📱 [PROD] RPC → Clerk + Supabase: ${procedure}`);
-      return realRpc.callRpc<T>(procedure, input);
-    },
-    [isDevMode, devRpc, realRpc]
-  );
+  // Guarda os valores mais recentes num ref e mantém `callRpc` com identidade
+  // permanentemente estável (sem deps). Isso é proposital: `realRpc.callRpc`
+  // depende de `getToken` do Clerk, que não temos garantia de estabilidade
+  // entre renders — se `callRpc` daqui mudasse de referência a cada render,
+  // qualquer tela que o use dentro de um useEffect (ex.: busca de
+  // profissionais) entraria em loop infinito de busca/re-render.
+  const latestRef = useRef({ isDevMode, devRpc, realRpc });
+  latestRef.current = { isDevMode, devRpc, realRpc };
 
-  return { callRpc, isDevMode };
+  const callRpc = useCallback(async <T = unknown>(procedure: string, input?: unknown): Promise<T> => {
+    const { isDevMode, devRpc, realRpc } = latestRef.current;
+    if (isDevMode) {
+      console.log(`🛠️ [DEV] RPC → Supabase real: ${procedure}`);
+      return devRpc.callRpc<T>(procedure, input);
+    }
+    console.log(`📱 [PROD] RPC → Clerk + Supabase: ${procedure}`);
+    return realRpc.callRpc<T>(procedure, input);
+  }, []);
+
+  return useMemo(() => ({ callRpc, isDevMode }), [callRpc, isDevMode]);
 }

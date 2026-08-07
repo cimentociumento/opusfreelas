@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  TouchableOpacity,
+  Pressable,
   Text,
   StyleSheet,
   ActivityIndicator,
@@ -131,11 +131,19 @@ export function Button({
   };
 
   return (
-    <TouchableOpacity
-      style={[getButtonStyle(), getSizeStyle(), style]}
+    // TouchableOpacity é pouco confiável no React Native Web quando aninhado
+    // dentro de listas (FlatList/ScrollView) — o responder de scroll da lista
+    // pode engolir o toque antes do onPress disparar. Pressable não tem esse
+    // problema e funciona de forma consistente em iOS/Android/Web.
+    <Pressable
+      style={({ pressed }) => [
+        getButtonStyle(),
+        getSizeStyle(),
+        style,
+        pressed && !(disabled || loading) ? { opacity: 0.7 } : null,
+      ]}
       onPress={handlePress}
       disabled={disabled || loading}
-      activeOpacity={disabled || loading ? 1 : 0.7}
     >
       {loading ? (
         <ActivityIndicator color="#fff" />
@@ -145,6 +153,6 @@ export function Button({
           <Text style={[getTextStyle(), getTextSizeStyle(), textStyle]}>{title}</Text>
         </>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
