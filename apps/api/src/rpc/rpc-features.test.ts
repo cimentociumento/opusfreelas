@@ -452,6 +452,57 @@ describe("RPC Features (Demands & Discovery)", () => {
       expect(data.displayName).toBe("Maria Souza");
       expect(data.avatarUrl).toBeNull();
     });
+
+    it("updateProfile saves displayName", async () => {
+      const updatedRow = {
+        clerk_user_id: authState.userId,
+        display_name: "João Pedro",
+      };
+
+      fromMock.mockImplementation(() => ({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: updatedRow, error: null }),
+            }),
+          }),
+        }),
+      }));
+
+      const res = await app.request("/rpc", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          procedure: "identity.updateProfile",
+          input: { displayName: "João Pedro" },
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.displayName).toBe("João Pedro");
+    });
+
+    it("updateProfile rejects a name shorter than 2 characters", async () => {
+      const res = await app.request("/rpc", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          procedure: "identity.updateProfile",
+          input: { displayName: "A" },
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe("Invalid input");
+    });
   });
 
   describe("Discovery RPC", () => {
