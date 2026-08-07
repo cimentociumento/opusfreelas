@@ -7,6 +7,8 @@ export type ProfileRow = {
   clerk_user_id: string;
   is_contractor: boolean;
   is_provider: boolean;
+  display_name?: string | null;
+  avatar_url?: string | null;
   service_categories?: string[];
 };
 
@@ -14,7 +16,7 @@ export async function getProfileByClerkUserId(userId: string): Promise<ProfileRo
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("profiles")
-    .select("clerk_user_id, is_contractor, is_provider, service_categories")
+    .select("clerk_user_id, is_contractor, is_provider, display_name, avatar_url, service_categories")
     .eq("clerk_user_id", userId)
     .maybeSingle<ProfileRow>();
 
@@ -27,6 +29,8 @@ export async function getProfileByClerkUserId(userId: string): Promise<ProfileRo
       clerk_user_id: userId,
       is_contractor: true,
       is_provider: false,
+      display_name: null,
+      avatar_url: null,
       service_categories: [],
     }
   );
