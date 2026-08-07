@@ -13,7 +13,10 @@
     "export:web": "expo export --platform web"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "moduleNameMapper": {
+      "^@react-native-async-storage/async-storage$": "@react-native-async-storage/async-storage/jest/async-storage-mock"
+    }
   },
   "expo": {
     "install": {
