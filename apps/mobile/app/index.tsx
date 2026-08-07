@@ -24,10 +24,18 @@ export default function HomeScreen() {
                   Encontre os melhores profissionais para serviços manuais e rurais na região da AMAUC
                 </Text>
                 <Button
-                  title="Entrar e Começar"
+                  title="Entrar"
                   variant="primary"
                   size="lg"
+                  style={styles.actionButton}
                   onPress={() => router.push("/sign-in")}
+                />
+                <Button
+                  title="Cadastrar-se"
+                  variant="secondary"
+                  size="lg"
+                  style={styles.actionButton}
+                  onPress={() => router.push("/sign-up")}
                 />
               </Card>
             </View>

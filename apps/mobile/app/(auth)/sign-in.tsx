@@ -3,457 +3,206 @@ import {
   useAuth,
   useClerk,
   useSignIn,
-  useSignUp,
 } from "@clerk/clerk-expo";
 import { Redirect, useRouter } from "expo-router";
-import { useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-
-function formatE164(phone: string) {
-  let trimmed = phone.trim();
-
-  // Trata prefixo internacional 00 (ex: 001 para EUA)
-  if (trimmed.startsWith("00")) {
-    trimmed = "+" + trimmed.slice(2);
-  }
-
-  if (trimmed.startsWith("+")) {
-    let digits = trimmed.replace(/\D/g, "");
-    if (digits.startsWith("550")) {
-      digits = "55" + digits.slice(3);
-    }
-    return `+${digits}`;
-  }
-
-  let digits = trimmed.replace(/\D/g, "");
-  if (digits.length === 0) return "";
-
-  if (digits.startsWith("0")) {
-    digits = digits.replace(/^0+/, "");
-  }
-
-  if (!digits.startsWith("55")) {
-    digits = `55${digits}`;
-  }
-
-  const localPart = digits.slice(4);
-  if (localPart.length === 8 && /^[6-9]/.test(localPart)) {
-    const ddd = digits.slice(2, 4);
-    digits = `55${ddd}9${localPart}`;
-  }
-
-  return `+${digits}`;
-}
-
-function normalizeOtpCode(code: string) {
-  return code.replace(/\D/g, "").trim();
-}
-
-function isSignUpIfMissingTransferError(error: unknown) {
-  if (!isClerkAPIResponseError(error)) return false;
-  return error.errors.some((e) => e.code === "sign_up_if_missing_transfer");
-}
-
-function isVerificationCodeError(error: unknown) {
-  if (!isClerkAPIResponseError(error)) return false;
-  return error.errors.some((e) =>
-    ["form_code_incorrect", "verification_expired", "verification_failed", "form_param_format_invalid"].includes(e.code ?? ""),
-  );
-}
-
-function isSignInNotIdentifiedError(error: unknown) {
-  if (!isClerkAPIResponseError(error)) return false;
-  return error.errors.some((e) => {
-    const msg = `${e.message ?? ""} ${e.longMessage ?? ""}`.toLowerCase();
-    return e.code === "sign_in_attempt_not_identified" || msg.includes("not identified") || msg.includes("identify first");
-  });
-}
+import { useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, ScrollView } from "react-native";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message.trim()) return error.message;
   if (isClerkAPIResponseError(error)) {
-    return error.errors[0]?.longMessage ?? error.errors[0]?.message ?? fallback;
+    const firstErr = error.errors[0];
+    if (firstErr) {
+      if (firstErr.code === "form_identifier_not_found") {
+        return "Usuário não encontrado. Verifique o nome de usuário digitado.";
+      }
+      if (firstErr.code === "form_password_incorrect") {
+        return "Senha incorreta. Tente novamente.";
+      }
+      return firstErr.longMessage ?? firstErr.message ?? fallback;
+    }
   }
   return fallback;
-}
-
-function getPhoneCodeFactor(signIn: NonNullable<ReturnType<typeof useSignIn>["signIn"]>) {
-  return signIn.supportedFirstFactors?.find((f) => f.strategy === "phone_code");
 }
 
 export default function SignInScreen() {
   const router = useRouter();
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
-  const { setActive: activateSession, signOut } = useClerk();
+  const { setActive: activateSession } = useClerk();
   const { signIn, isLoaded: signInLoaded } = useSignIn();
-  const { signUp, isLoaded: signUpLoaded } = useSignUp();
 
-  const [phoneInput, setPhoneInput] = useState("");
-  const [code, setCode] = useState("");
-  const [sent, setSent] = useState(false);
-  const [pendingPhone, setPendingPhone] = useState<string | null>(null);
-  const [flowType, setFlowType] = useState<"signIn" | "signUp" | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const verifyingRef = useRef(false);
 
-  const loaded = authLoaded && signInLoaded && signUpLoaded;
+  const loaded = authLoaded && signInLoaded;
 
   if (authLoaded && isSignedIn) {
     return <Redirect href="/" />;
   }
 
-  function resetToIdentification(message?: string) {
-    setSent(false);
-    setPendingPhone(null);
-    setFlowType(null);
-    setCode("");
-    setError(message ?? null);
-    verifyingRef.current = false;
-  }
-
   async function activateClerkSession(sessionId: string | null | undefined) {
-    if (!sessionId) throw new Error("Sessao nao foi criada. Tente novamente.");
+    if (!sessionId) throw new Error("Sessão não foi criada. Tente novamente.");
     await activateSession({ session: sessionId });
     router.replace("/");
   }
 
-  async function transferToSignUp() {
-    if (!signUp) throw new Error("Cadastro indisponivel. Tente novamente.");
-    await signUp.create({ transfer: true });
+  async function handleSignIn() {
+    if (!loaded || !signIn) return;
 
-    // signUp e um recurso do Clerk mutado por referencia: le-lo atras de uma
-    // funcao evita que o TS aplique (incorretamente) a estreita feita antes do
-    // "await signUp.update", que nao reflete o valor apos a mutacao.
-    const readSignUpStatus = () => signUp.status;
+    const trimmedUsername = username.trim();
 
-    if (readSignUpStatus() === "complete") {
-      await activateClerkSession(signUp.createdSessionId);
+    if (!trimmedUsername) {
+      setError("Informe seu nome de usuário.");
       return;
     }
-
-    if (signUp.missingFields?.includes("legal_accepted")) {
-      await signUp.update({ legalAccepted: true });
-    }
-
-    if (readSignUpStatus() === "complete") {
-      await activateClerkSession(signUp.createdSessionId);
+    if (!password) {
+      setError("Informe sua senha.");
       return;
     }
-
-    throw new Error(`Campos faltando: ${JSON.stringify(signUp.missingFields)}`);
-  }
-
-  async function sendCode() {
-    if (!loaded || !signIn || !signUp) return;
 
     setLoading(true);
     setError(null);
-    setCode("");
-
-    const phone = formatE164(phoneInput);
 
     try {
-      try {
-        await signIn.create({ identifier: phone });
-      } catch (err) {
-        if (isClerkAPIResponseError(err) && err.errors.some((e) => e.code === "session_exists")) {
-          await signOut();
-          await signIn.create({ identifier: phone });
-        } else {
-          throw err;
-        }
-      }
-
-      if (signIn.status !== "needs_first_factor") {
-        throw new Error(`Nao foi possivel iniciar a verificacao (${signIn.status ?? "desconhecido"}).`);
-      }
-
-      const phoneFactor = getPhoneCodeFactor(signIn);
-      if (!phoneFactor || !("phoneNumberId" in phoneFactor) || !phoneFactor.phoneNumberId) {
-        throw new Error("Verificacao por SMS indisponivel para este numero.");
-      }
-
-      await signIn.prepareFirstFactor({
-        strategy: "phone_code",
-        phoneNumberId: phoneFactor.phoneNumberId,
+      const result = await signIn.create({
+        identifier: trimmedUsername,
+        password,
       });
 
-      setPendingPhone(phone);
-      setFlowType("signIn");
-      setSent(true);
-    } catch (sendError) {
-      if (
-        isClerkAPIResponseError(sendError) &&
-        sendError.errors.some((e) => e.code === "form_identifier_not_found")
-      ) {
-        try {
-          await signUp.create({ phoneNumber: phone, legalAccepted: true });
-          await signUp.preparePhoneNumberVerification({ strategy: "phone_code" });
-          setPendingPhone(phone);
-          setFlowType("signUp");
-          setSent(true);
-        } catch (signUpError) {
-          setError(getErrorMessage(signUpError, "Nao foi possivel criar a conta."));
-        }
-      } else {
-        setError(getErrorMessage(sendError, "Nao foi possivel enviar o codigo."));
+      if (result.status === "complete") {
+        await activateClerkSession(result.createdSessionId);
+        return;
       }
+
+      throw new Error(`Login incompleto (${result.status ?? "desconhecido"}).`);
+    } catch (err) {
+      setError(getErrorMessage(err, "Não foi possível realizar o login. Verifique suas credenciais."));
     } finally {
-      setLoading(false);
-    }
-  }
-
-  async function resendCode() {
-    if (!loaded || !pendingPhone) return;
-
-    setLoading(true);
-    setError(null);
-    setCode("");
-
-    try {
-      if (flowType === "signUp") {
-        if (!signUp) throw new Error("Cadastro indisponivel.");
-        await signUp.preparePhoneNumberVerification({ strategy: "phone_code" });
-        return;
-      }
-
-      if (!signIn) throw new Error("Autenticacao indisponivel.");
-
-      const phoneFactor = getPhoneCodeFactor(signIn);
-      if (!phoneFactor || !("phoneNumberId" in phoneFactor) || !phoneFactor.phoneNumberId) {
-        throw new Error("Nao foi possivel reenviar o codigo.");
-      }
-
-      await signIn.prepareFirstFactor({
-        strategy: "phone_code",
-        phoneNumberId: phoneFactor.phoneNumberId,
-      });
-    } catch (resendError) {
-      if (isSignInNotIdentifiedError(resendError) || signIn?.status === "needs_identifier") {
-        resetToIdentification("Sessao expirada. Informe seu telefone novamente.");
-        return;
-      }
-      setError(getErrorMessage(resendError, "Nao foi possivel reenviar o codigo."));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function finalizeVerifiedSignIn() {
-    if (!signIn) throw new Error("Autenticacao indisponivel. Tente novamente.");
-
-    if (signIn.status === "complete") {
-      await activateClerkSession(signIn.createdSessionId);
-      return;
-    }
-
-    if (signIn.status === "needs_second_factor") {
-      throw new Error("Autenticacao adicional necessaria. Entre em contato com o suporte.");
-    }
-
-    const verificationStatus = signIn.firstFactorVerification?.status;
-    if (verificationStatus === "failed" || verificationStatus === "expired") {
-      throw new Error("Codigo invalido ou expirado. Solicite um novo codigo.");
-    }
-
-    throw new Error(`Verificacao incompleta (${signIn.status ?? "desconhecido"}).`);
-  }
-
-  async function verifyCode() {
-    if (!loaded || !sent) return;
-    if (verifyingRef.current) return; // bloqueia double-tap
-    verifyingRef.current = true;
-
-    const normalizedCode = normalizeOtpCode(code);
-    if (!normalizedCode) {
-      setError("Informe o codigo recebido por SMS.");
-      verifyingRef.current = false;
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      if (flowType === "signUp") {
-        if (!signUp) throw new Error("Cadastro indisponivel.");
-
-        let result = signUp;
-        try {
-          result = await signUp.attemptPhoneNumberVerification({ code: normalizedCode });
-        } catch (err) {
-          if (
-            isClerkAPIResponseError(err) &&
-            err.errors.some((e) => e.code === "verification_already_verified")
-          ) {
-            // Se já foi verificado, continuamos com o estado atual de signUp
-            result = signUp;
-          } else {
-            throw err;
-          }
-        }
-
-        if (result.status === "complete") {
-          await activateClerkSession(result.createdSessionId);
-          return;
-        }
-
-        // Tenta resolver missing_requirements automaticamente
-        if (result.status === "missing_requirements") {
-          if (result.missingFields?.includes("legal_accepted")) {
-            await signUp.update({ legalAccepted: true });
-          }
-
-          if (signUp.status === "complete") {
-            await activateClerkSession(signUp.createdSessionId);
-            return;
-          }
-
-          throw new Error(`Campos faltando: ${JSON.stringify(signUp.missingFields)}`);
-        }
-
-        throw new Error(`Cadastro incompleto (${result.status ?? "desconhecido"}).`);
-      }
-
-      // Fluxo de sign-in
-      if (!signIn) throw new Error("Autenticacao indisponivel.");
-
-      if (signIn.status === "needs_identifier") {
-        resetToIdentification("Sessao expirada. Informe seu telefone novamente.");
-        return;
-      }
-
-      if (signIn.status !== "needs_first_factor") {
-        resetToIdentification("Estado de autenticacao invalido. Envie o codigo novamente.");
-        return;
-      }
-
-      try {
-        await signIn.attemptFirstFactor({ strategy: "phone_code", code: normalizedCode });
-      } catch (verifyError) {
-        if (
-          isClerkAPIResponseError(verifyError) &&
-          verifyError.errors.some((e) => e.code === "verification_already_verified")
-        ) {
-          // Ignora erro se já foi verificado, continua para finalizar
-        } else if (isSignUpIfMissingTransferError(verifyError)) {
-          await transferToSignUp();
-          return;
-        } else if (isSignInNotIdentifiedError(verifyError)) {
-          resetToIdentification("Sessao expirada. Informe seu telefone novamente.");
-          return;
-        } else if (isVerificationCodeError(verifyError)) {
-          setError(getErrorMessage(verifyError, "Codigo invalido ou expirado."));
-          return;
-        } else {
-          throw verifyError;
-        }
-      }
-      
-      await finalizeVerifiedSignIn();
-    } catch (verifyError) {
-      setError(getErrorMessage(verifyError, "Nao foi possivel validar o codigo."));
-    } finally {
-      verifyingRef.current = false;
       setLoading(false);
     }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Entrar com telefone</Text>
-      <Text style={styles.subtitle}>Insira seu número com DDD ou código do país (ex: +55 para Brasil).</Text>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <Text style={styles.title}>Entrar na Conta</Text>
+      <Text style={styles.subtitle}>
+        Informe seu nome de usuário e senha para acessar o Opus Freelas.
+      </Text>
 
-      <TextInput
-        value={phoneInput}
-        onChangeText={setPhoneInput}
-        placeholder="+55 49 99999-9999"
-        keyboardType="phone-pad"
-        autoCapitalize="none"
-        editable={!sent}
-        style={styles.input}
-      />
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Nome de Usuário (Username)</Text>
+        <TextInput
+          value={username}
+          onChangeText={setUsername}
+          placeholder="Digite seu nome de usuário"
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={styles.input}
+        />
+      </View>
 
-      {!sent ? (
-        <Pressable style={styles.button} onPress={sendCode} disabled={loading || !phoneInput.trim()}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonLabel}>Enviar codigo</Text>}
-        </Pressable>
-      ) : (
-        <>
-          <Text style={styles.hint}>Codigo enviado para {pendingPhone ?? "seu telefone"}.</Text>
-          <TextInput
-            value={code}
-            onChangeText={setCode}
-            placeholder="Codigo OTP"
-            keyboardType="number-pad"
-            autoComplete="one-time-code"
-            textContentType="oneTimeCode"
-            maxLength={6}
-            style={styles.input}
-          />
-          <Pressable style={styles.button} onPress={verifyCode} disabled={loading || !code.trim()}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonLabel}>Confirmar codigo</Text>}
-          </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={resendCode} disabled={loading}>
-            <Text style={styles.secondaryButtonLabel}>Reenviar codigo</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryButton} onPress={() => resetToIdentification()} disabled={loading}>
-            <Text style={styles.secondaryButtonLabel}>Usar outro telefone</Text>
-          </Pressable>
-        </>
-      )}
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Senha</Text>
+        <TextInput
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Digite sua senha"
+          secureTextEntry
+          autoCapitalize="none"
+          style={styles.input}
+        />
+      </View>
+
+      <Pressable
+        style={[styles.button, (loading || !username.trim() || !password) && styles.buttonDisabled]}
+        onPress={handleSignIn}
+        disabled={loading || !username.trim() || !password}
+      >
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonLabel}>Entrar</Text>}
+      </Pressable>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-    </View>
+
+      <View style={styles.footerLinkContainer}>
+        <Text style={styles.footerText}>Não tem uma conta?</Text>
+        <Pressable onPress={() => router.push("/sign-up")}>
+          <Text style={styles.linkText}> Cadastre-se</Text>
+        </Pressable>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     padding: 24,
-    gap: 12,
+    gap: 14,
+    backgroundColor: "#fff",
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "700",
+    color: "#111827",
   },
   subtitle: {
     fontSize: 14,
-    opacity: 0.8,
+    color: "#4b5563",
+    marginBottom: 8,
   },
-  hint: {
-    fontSize: 13,
-    opacity: 0.75,
+  fieldGroup: {
+    gap: 4,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: "#d1d5db",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
+    fontSize: 16,
+    backgroundColor: "#f9fafb",
   },
   button: {
     backgroundColor: "#116530",
     borderRadius: 8,
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonLabel: {
     color: "#fff",
     fontWeight: "600",
-  },
-  secondaryButton: {
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  secondaryButtonLabel: {
-    color: "#116530",
-    fontWeight: "600",
+    fontSize: 16,
   },
   error: {
     color: "#b00020",
+    fontSize: 14,
+    marginTop: 4,
+  },
+  footerLinkContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 20,
+  },
+  footerText: {
+    fontSize: 14,
+    color: "#6b7280",
+  },
+  linkText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#116530",
   },
 });
