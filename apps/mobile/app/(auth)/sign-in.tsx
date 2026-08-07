@@ -84,7 +84,7 @@ function getPhoneCodeFactor(signIn: NonNullable<ReturnType<typeof useSignIn>["si
 export default function SignInScreen() {
   const router = useRouter();
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
-  const { setActive: activateSession } = useClerk();
+  const { setActive: activateSession, signOut } = useClerk();
   const { signIn, isLoaded: signInLoaded } = useSignIn();
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
 
@@ -154,7 +154,16 @@ export default function SignInScreen() {
     const phone = formatE164(phoneInput);
 
     try {
-      await signIn.create({ identifier: phone });
+      try {
+        await signIn.create({ identifier: phone });
+      } catch (err) {
+        if (isClerkAPIResponseError(err) && err.errors.some((e) => e.code === "session_exists")) {
+          await signOut();
+          await signIn.create({ identifier: phone });
+        } else {
+          throw err;
+        }
+      }
 
       if (signIn.status !== "needs_first_factor") {
         throw new Error(`Nao foi possivel iniciar a verificacao (${signIn.status ?? "desconhecido"}).`);
@@ -270,7 +279,20 @@ export default function SignInScreen() {
       if (flowType === "signUp") {
         if (!signUp) throw new Error("Cadastro indisponivel.");
 
-        const result = await signUp.attemptPhoneNumberVerification({ code: normalizedCode });
+        let result = signUp;
+        try {
+          result = await signUp.attemptPhoneNumberVerification({ code: normalizedCode });
+        } catch (err) {
+          if (
+            isClerkAPIResponseError(err) &&
+            err.errors.some((e) => e.code === "verification_already_verified")
+          ) {
+            // Se já foi verificado, continuamos com o estado atual de signUp
+            result = signUp;
+          } else {
+            throw err;
+          }
+        }
 
         if (result.status === "complete") {
           await activateClerkSession(result.createdSessionId);
@@ -309,22 +331,27 @@ export default function SignInScreen() {
 
       try {
         await signIn.attemptFirstFactor({ strategy: "phone_code", code: normalizedCode });
-        await finalizeVerifiedSignIn();
       } catch (verifyError) {
-        if (isSignUpIfMissingTransferError(verifyError)) {
+        if (
+          isClerkAPIResponseError(verifyError) &&
+          verifyError.errors.some((e) => e.code === "verification_already_verified")
+        ) {
+          // Ignora erro se já foi verificado, continua para finalizar
+        } else if (isSignUpIfMissingTransferError(verifyError)) {
           await transferToSignUp();
           return;
-        }
-        if (isSignInNotIdentifiedError(verifyError)) {
+        } else if (isSignInNotIdentifiedError(verifyError)) {
           resetToIdentification("Sessao expirada. Informe seu telefone novamente.");
           return;
-        }
-        if (isVerificationCodeError(verifyError)) {
+        } else if (isVerificationCodeError(verifyError)) {
           setError(getErrorMessage(verifyError, "Codigo invalido ou expirado."));
           return;
+        } else {
+          throw verifyError;
         }
-        throw verifyError;
       }
+      
+      await finalizeVerifiedSignIn();
     } catch (verifyError) {
       setError(getErrorMessage(verifyError, "Nao foi possivel validar o codigo."));
     } finally {

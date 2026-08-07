@@ -32,9 +32,7 @@ const publishableKey =
   process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || FALLBACK_KEY;
 
 function InitialLayout() {
-  const { isLoaded, isSignedIn } = useAuth({
-    treatPendingAsSignedOut: false,   // ← Isso evita redirecionamento precoce para OTP
-  });
+  const { isLoaded } = useAuth();
 
   // Enquanto carrega o Clerk
   if (!isLoaded) {
@@ -45,12 +43,8 @@ function InitialLayout() {
     );
   }
 
-  // Se o usuário já estiver logado, vai direto para o app
-  if (isSignedIn) {
-    return <Redirect href={"/(app)" as any} />;
-  }
-
-  // Caso contrário, mostra as rotas de autenticação (sign-in, etc)
+  // A tela inicial (app/index.tsx) decide o que mostrar com base no estado de autenticação
+  // (rotas protegidas no grupo (app) também possuem verificação no seu próprio _layout.tsx)
   return <Stack screenOptions={{ headerShown: false }} />;
 }
 

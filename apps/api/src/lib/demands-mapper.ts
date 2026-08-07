@@ -33,18 +33,6 @@ function parseEwkbPoint(hex: string): { lng: number; lat: number } | null {
   return Number.isFinite(lng) && Number.isFinite(lat) ? { lng, lat } : null;
 }
 
-export function mapDemandRow(row: DemandRow): DemandResponse {
-  let lng: number | undefined = typeof row.location === "object" ? row.location?.coordinates?.[0] : undefined;
-  let lat: number | undefined = typeof row.location === "object" ? row.location?.coordinates?.[1] : undefined;
-
-  if ((lng == null || lat == null) && typeof row.location === "string") {
-    const parsed = parseEwkbPoint(row.location);
-    if (parsed) {
-      lng = parsed.lng;
-      lat = parsed.lat;
-    }
-  }
-
 function parseGeoJsonLocation(value: unknown): ParsedCoordinates | null {
   if (typeof value === "string") {
     try {
