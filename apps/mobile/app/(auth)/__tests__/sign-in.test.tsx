@@ -45,6 +45,11 @@ jest.mock("@clerk/clerk-expo", () => ({
     typeof error === "object" && error !== null && "clerkError" in error,
 }));
 
+const mockCallRpc = jest.fn();
+jest.mock("../../../hooks/use-rpc-with-dev-mode", () => ({
+  useRpcWithDevMode: () => ({ callRpc: mockCallRpc }),
+}));
+
 import SignInScreen from "../sign-in";
 
 describe("SignInScreen sendCode", () => {
@@ -53,6 +58,7 @@ describe("SignInScreen sendCode", () => {
     mockSignUp = makeSignUp();
     mockSetActive.mockClear();
     mockReplace.mockClear();
+    mockCallRpc.mockReset();
   });
 
   it("tries signIn.create() first for a phone that already has an account", async () => {
@@ -100,5 +106,32 @@ describe("SignInScreen sendCode", () => {
     });
     expect(mockSignUp.preparePhoneNumberVerification).toHaveBeenCalledWith({ strategy: "phone_code" });
     await waitFor(() => expect(getByText(/Codigo enviado/)).toBeTruthy());
+  });
+
+  describe("SignInScreen post-verification redirect", () => {
+    it("redirects to /onboarding when the profile has no displayName", async () => {
+      mockSignIn.status = "needs_first_factor";
+      mockSignIn.firstFactorVerification = { status: "verified" } as any;
+      mockSignIn.createdSessionId = "sess_123";
+      mockSignIn.attemptFirstFactor = jest.fn(async () => {
+        mockSignIn.status = "complete";
+      });
+      mockCallRpc.mockResolvedValue({ displayName: null });
+
+      const { getByPlaceholderText, getByText } = await render(<SignInScreen />);
+      await fireEvent.changeText(getByPlaceholderText("+55 49 99999-9999"), "49999999999");
+      mockSignIn.create.mockImplementation(async () => {
+        mockSignIn.status = "needs_first_factor";
+        mockSignIn.supportedFirstFactors = [{ strategy: "phone_code", phoneNumberId: "phone_1" }];
+      });
+      await fireEvent.press(getByText("Enviar codigo"));
+      await waitFor(() => expect(getByText(/Codigo enviado/)).toBeTruthy());
+
+      await fireEvent.changeText(getByPlaceholderText("Codigo OTP"), "123456");
+      await fireEvent.press(getByText("Confirmar codigo"));
+
+      await waitFor(() => expect(mockCallRpc).toHaveBeenCalledWith("identity.getProfile"));
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/onboarding"));
+    });
   });
 });

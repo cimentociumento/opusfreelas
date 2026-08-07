@@ -8,6 +8,7 @@ import {
 import { Redirect, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useRpcWithDevMode } from "../../hooks/use-rpc-with-dev-mode";
 
 function formatE164(phone: string) {
   let trimmed = phone.trim();
@@ -87,6 +88,7 @@ export default function SignInScreen() {
   const { setActive: activateSession, signOut } = useClerk();
   const { signIn, isLoaded: signInLoaded } = useSignIn();
   const { signUp, isLoaded: signUpLoaded } = useSignUp();
+  const { callRpc } = useRpcWithDevMode();
 
   const [phoneInput, setPhoneInput] = useState("");
   const [code, setCode] = useState("");
@@ -115,7 +117,14 @@ export default function SignInScreen() {
   async function activateClerkSession(sessionId: string | null | undefined) {
     if (!sessionId) throw new Error("Sessao nao foi criada. Tente novamente.");
     await activateSession({ session: sessionId });
-    router.replace("/");
+
+    try {
+      const profile = await callRpc<{ displayName?: string | null }>("identity.getProfile");
+      router.replace(profile.displayName ? "/" : "/onboarding");
+    } catch (error) {
+      console.error("[sign-in.activateClerkSession] Failed to check profile", error);
+      router.replace("/onboarding");
+    }
   }
 
   async function transferToSignUp() {
