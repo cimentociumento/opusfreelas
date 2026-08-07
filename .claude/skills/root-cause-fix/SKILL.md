@@ -1,84 +1,72 @@
 ---
 name: root-cause-fix
-description: |
-  Fluxo disciplinado de correção de bugs para o monorepo Opus Freelas
-  (Expo + Hono + Drizzle + Clerk + Supabase). Use ao investigar ou corrigir
-  qualquer defeito: crash, tela quebrada, RPC falhando, erro de tipo, bug
-  multiplataforma, regressão. Aplica classificação de severidade, análise de
-  causa raiz, TDD e diff mínimo. Gatilhos: corrigir, bug, erro, quebrou, não
-  funciona, regressão, crash, falha, stack trace.
+description: Investigar e corrigir qualquer defeito no Opus Freelas — crash, tela quebrada, RPC falhando, erro de tipo, bug multiplataforma, regressão. Aplica classificação de severidade, análise de causa raiz, TDD e diff mínimo. Use quando o usuário reportar bug, erro, algo que quebrou, não funciona, ou colar stack trace.
 ---
 
-# Correção por causa raiz — Opus Freelas
+# Correção por causa raiz
 
-Base construída em vibe coding com dívida técnica. O maior risco é corrigir
-sintoma e introduzir regressão. Este skill impõe disciplina.
+O maior risco neste projeto é corrigir sintoma e introduzir regressão. Este
+procedimento existe para impedir isso.
 
-## Regra de entrada
-Se você não consegue explicar em UMA frase por que o bug ocorre, você ainda
-NÃO tem permissão para editar código. Investigue primeiro.
+**Regra de entrada:** se você não consegue explicar em UMA frase por que o bug
+ocorre, você ainda não pode editar código. Investigue primeiro.
 
-## Passo 1 — Classificar severidade
-Antes de tudo, classifique (ver CLAUDE.md §4): S1 crítico, S2 alto, S3 médio,
-S4 baixo. Não trabalhe em S3/S4 se houver S1/S2 aberto. Declare a severidade.
+## 1. Classificar severidade
+Use a escala do CLAUDE.md (S1–S4). Declare a severidade na resposta. Se houver
+S1/S2 aberto e este for S3/S4, avise o usuário e proponha priorizar o grave.
 
-## Passo 2 — Reproduzir com evidência
-Exija stack trace, log do Expo/Hono, ou comportamento exato. Nunca corrija a
-partir de descrição vaga. Se não há evidência, peça ou reproduza.
+## 2. Reproduzir com evidência
+Exija stack trace, log do Expo/Hono, ou o comportamento exato observado. Se não
+há evidência, peça — ou reproduza você mesmo rodando o comando relevante. Nunca
+corrija a partir de descrição vaga.
 
-## Passo 3 — Causa raiz (não sintoma)
-Pergunte "por quê?" ao menos duas vezes. Verifique nesta ordem:
-1. É ambiente? (cache pnpm/expo, env ausente, rede IFC, DEV_BYPASS_TOKEN)
-   — primeira hipótese em erros intermitentes.
-2. É contrato? O schema Zod em `@amauc/shared` está desalinhado entre
-   `apps/api` e `apps/mobile`?
-3. É implementação? Só então investigue a lógica.
+## 3. Isolar a causa raiz
+Pergunte "por quê?" pelo menos duas vezes. Verifique nesta ordem:
 
-Nunca invente nomes de tabela, coluna, endpoint ou env var. Se não tem certeza
-do schema Supabase ou do contrato Zod, leia o arquivo antes de escrever código.
+1. **Ambiente** — cache pnpm/expo corrompido, env ausente, rede institucional,
+   `DEV_BYPASS_TOKEN` mal configurado. Primeira hipótese em erro intermitente.
+2. **Contrato** — schema Zod em `@amauc/shared` desalinhado entre api e mobile.
+   Causa muito comum aqui. Compare os dois consumidores.
+3. **Implementação** — só então investigue a lógica do handler ou componente.
 
-## Passo 4 — TDD
-- RED: escreva o teste que falha, reproduzindo o bug.
-- GREEN: menor correção que faz passar.
-- REFACTOR: limpe se necessário (commit separado do fix).
+Nunca invente nome de tabela, coluna, endpoint ou env var. Leia o arquivo.
 
-Erro de tipo TS/Zod é bug de contrato — corrija em `@amauc/shared` e propague.
-Nunca `as any` / `@ts-ignore` como solução.
+## 4. TDD
+- **RED** — escreva o teste que falha reproduzindo o bug. Na API:
+  `apps/api/src/**/*.test.ts` rodando com `pnpm --filter @amauc/api vitest run`.
+- **GREEN** — menor correção que faz passar.
+- **REFACTOR** — limpe se necessário, em commit separado do fix.
 
-## Passo 5 — Diff mínimo
-Nunca reescreva arquivo inteiro para corrigir bug localizado. Toque só as
-linhas necessárias. Reescrita completa só se o arquivo violar princípios de
-código (função gigante, responsabilidades misturadas) E declarada como refactor
-em commit separado.
+Erro de tipo TS/Zod é bug de contrato: corrija em `@amauc/shared` e propague.
+`as any` e `@ts-ignore` não são solução.
 
-## Passo 6 — Validar
-- Rodar `pnpm --filter @amauc/api vitest run` (mesmo comando do CI).
-- Bug multiplataforma: validar em iOS, Android E Web.
-- Confirmar zero novo warning/erro no terminal Expo/Hono.
-- Rodar suite inteira (regressão).
+## 5. Diff mínimo
+Toque só as linhas necessárias. Reescrita de arquivo inteiro só se ele violar os
+princípios do CLAUDE.md (função gigante, responsabilidades misturadas) e
+declarada explicitamente como refactor, em commit separado — nesse caso use a
+skill `refactor-safely`.
 
-## Passo 7 — Segurança
-Se tocou auth, RLS, input ou ownership, invoque o skill `auth-security-guard`.
+## 6. Verificar com evidência
+Não afirme sucesso — mostre. Cole a saída do teste, o comando rodado e o
+retorno. Se tocou mobile, valide em iOS, Android e Web. Confirme que a suite
+inteira passa (regressão) e que nenhum novo warning apareceu no terminal.
 
-## Quando a correção falha
-- Após 2 tentativas falhas no mesmo arquivo: declare "minha hipótese estava
-  errada" e volte ao Passo 3.
-- `git revert` é a primeira reação — nunca empilhe correção sobre correção.
-- Proibido acumular fixes especulativos no mesmo commit.
+## 7. Segurança
+Se tocou auth, RLS, ownership, input ou secret, aplique `auth-security-guard`
+antes de fechar.
 
-## Formato de saída obrigatório
+## Quando falha
+Após 2 tentativas sem sucesso no mesmo arquivo, declare explicitamente
+"minha hipótese de causa raiz estava errada" e volte ao passo 3. `git revert` é
+a primeira reação a um fix que quebrou algo — nunca empilhe correção sobre
+correção, e nunca acumule fixes especulativos no mesmo commit.
+
+## Formato de saída
 ```
-Severidade: Sx — <por quê>
+Severidade: Sx — <justificativa>
 Causa raiz: <uma frase>
 Correção mínima: <o que muda e por quê>
-Arquivos alterados: <lista>
+Arquivos: <lista>
+Evidência: <saída do teste / comando>
 Risco de regressão: <onde vigiar>
-Teste recomendado: <comando ou passo manual>
 ```
-
-## Anti-patterns
-- "Deveria funcionar agora" sem ter rastreado a causa raiz.
-- Corrigir no escuro sem evidência.
-- Reescrever arquivo inteiro por bug pontual.
-- Silenciar erro de tipo em vez de ajustar o contrato.
-- Commit misturando fix + refactor + feature.

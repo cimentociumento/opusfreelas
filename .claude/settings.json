@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true,
@@ -6,5 +7,47 @@
     "claude-code-setup@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
     "supabase@claude-plugins-official": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'git (commit|push).*(--no-verify|-n )'; then echo '[hook] bloqueado: --no-verify contorna os gates do projeto' >&2; exit 2; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_FILE_PATHS\" | grep -qE '\\.(ts|tsx)$'; then echo '[hook] TS alterado - rode o typecheck do pacote afetado antes de fechar'; fi"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && if git diff --cached --name-only 2>/dev/null | grep -q .; then if git diff --cached | grep -nEi '(sk_live|whsec_|SERVICE_ROLE_KEY[^_]*=[A-Za-z0-9]|-----BEGIN [A-Z ]*PRIVATE KEY)'; then echo '[hook] possivel secret no stage - revise antes de commitar' >&2; exit 2; fi; fi"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./apps/*/.env)",
+      "Read(./apps/*/.env.local)"
+    ]
   }
 }
