@@ -419,6 +419,41 @@ describe("RPC Features (Demands & Discovery)", () => {
     });
   });
 
+  describe("Identity RPC", () => {
+    it("getProfile returns displayName and avatarUrl", async () => {
+      const mockProfile = {
+        clerk_user_id: authState.userId,
+        is_contractor: true,
+        is_provider: false,
+        display_name: "Maria Souza",
+        avatar_url: null,
+        service_categories: [],
+      };
+
+      fromMock.mockImplementation(() => ({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+          }),
+        }),
+      }));
+
+      const res = await app.request("/rpc", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ procedure: "identity.getProfile", input: {} }),
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.displayName).toBe("Maria Souza");
+      expect(data.avatarUrl).toBeNull();
+    });
+  });
+
   describe("Discovery RPC", () => {
     it("searches providers successfully", async () => {
       const mockProviders = [

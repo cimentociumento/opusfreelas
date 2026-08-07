@@ -23,6 +23,8 @@ export const identityHandlers = {
       clerkUserId: profile.clerk_user_id,
       isContractor: profile.is_contractor,
       isProvider: profile.is_provider,
+      displayName: profile.display_name ?? null,
+      avatarUrl: profile.avatar_url ?? null,
       serviceCategories: profile.service_categories ?? [],
     });
   },
