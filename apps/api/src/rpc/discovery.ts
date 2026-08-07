@@ -1,4 +1,4 @@
-import { z } from "zod";  
+import { z } from "zod";
 import type { Context } from "hono";
 import { getSupabaseAdmin } from "../lib/supabase.js";
 import { providerSearchSchema } from "@amauc/shared";
@@ -6,6 +6,7 @@ import { providerSearchSchema } from "@amauc/shared";
 type ProviderResult = {
   clerkUserId: string;
   isProvider: boolean;
+  displayName: string | null;
   serviceCategories: string[];
   distanceMeters: number;
 };
@@ -28,13 +29,14 @@ export const discoveryHandlers = {
     });
 
     if (error) {
-      console.error("Error searching providers:", error);
+      console.error("[discovery.searchProviders] Database error:", error);
       return c.json({ error: "Database error", details: error.message }, 500);
     }
 
     const results: ProviderResult[] = (data || []).map((row: any) => ({
       clerkUserId: row.clerk_user_id,
       isProvider: row.is_provider,
+      displayName: row.display_name ?? null,
       serviceCategories: row.service_categories,
       distanceMeters: row.distance_meters
     }));

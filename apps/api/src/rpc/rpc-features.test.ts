@@ -508,11 +508,12 @@ describe("RPC Features (Demands & Discovery)", () => {
   describe("Discovery RPC", () => {
     it("searches providers successfully", async () => {
       const mockProviders = [
-        { 
-          clerk_user_id: "provider_1", 
-          is_provider: true, 
+        {
+          clerk_user_id: "provider_1",
+          is_provider: true,
+          display_name: "Carlos Ferreira",
           service_categories: ["Roçada / Capina"],
-          distance_meters: 1500 
+          distance_meters: 1500
         }
       ];
 
@@ -539,6 +540,7 @@ describe("RPC Features (Demands & Discovery)", () => {
       const data = await res.json();
       expect(data).toHaveLength(1);
       expect(data[0].clerkUserId).toBe("provider_1");
+      expect(data[0].displayName).toBe("Carlos Ferreira");
       expect(data[0].distanceMeters).toBe(1500);
     });
   });
