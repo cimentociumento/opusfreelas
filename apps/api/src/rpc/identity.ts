@@ -39,8 +39,10 @@ export const identityHandlers = {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from("profiles")
-      .update({ display_name: parsed.data.displayName, updated_at: new Date().toISOString() })
-      .eq("clerk_user_id", auth.userId)
+      .upsert(
+        { clerk_user_id: auth.userId, display_name: parsed.data.displayName, updated_at: new Date().toISOString() },
+        { onConflict: "clerk_user_id" },
+      )
       .select("clerk_user_id, display_name")
       .single();
 

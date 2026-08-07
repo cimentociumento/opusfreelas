@@ -460,11 +460,9 @@ describe("RPC Features (Demands & Discovery)", () => {
       };
 
       fromMock.mockImplementation(() => ({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ data: updatedRow, error: null }),
-            }),
+        upsert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: updatedRow, error: null }),
           }),
         }),
       }));
