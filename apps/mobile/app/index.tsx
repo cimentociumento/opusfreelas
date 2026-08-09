@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import { Stack, useRouter } from "expo-router";
 import { StyleSheet, Text, View, ScrollView } from "react-native";
 import { Button, Card, DevModeToggle, DevAuthWrapper, theme } from "../components";
@@ -54,13 +54,14 @@ export default function HomeScreen() {
 
 function SignedInContent() {
   const { signOut } = useAuth();
+  const { user } = useUser();
   const router = useRouter();
 
   return (
     <View style={styles.content}>
       <View style={styles.welcomeSection}>
         <Card style={styles.welcomeCard}>
-          <Text style={styles.welcomeTitle}>Olá! 👋</Text>
+          <Text style={styles.welcomeTitle}>Olá, {user?.firstName || user?.username || "usuário"}! 👋</Text>
           <Text style={styles.welcomeSubtitle}>
             Encontre profissionais para seus serviços
           </Text>
