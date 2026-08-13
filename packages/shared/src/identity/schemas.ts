@@ -23,3 +23,10 @@ export const updateProviderSocialProfileSchema = z.object({
 export type UpdateProviderSocialProfileInput = z.infer<
   typeof updateProviderSocialProfileSchema
 >;
+
+export const uploadPortfolioImageSchema = z.object({
+  imageBase64: z.string().min(1).max(2_800_000), // ~2MB decoded image ceiling
+  contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+});
+
+export type UploadPortfolioImageInput = z.infer<typeof uploadPortfolioImageSchema>;

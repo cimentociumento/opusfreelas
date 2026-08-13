@@ -10,6 +10,8 @@ export {
   type UpdateIdentityProfileInput,
   updateProviderSocialProfileSchema,
   type UpdateProviderSocialProfileInput,
+  uploadPortfolioImageSchema,
+  type UploadPortfolioImageInput,
 } from "./identity/schemas";
 
 export * from "./demands/schemas";

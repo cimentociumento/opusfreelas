@@ -11,6 +11,7 @@ import {
   updateProviderProfileSchema,
   updateIdentityProfileSchema,
   updateProviderSocialProfileSchema,
+  uploadPortfolioImageSchema,
 } from "@amauc/shared";
 
 const providerOnlyInputSchema = z.object({
@@ -164,6 +165,42 @@ export const identityHandlers = {
       isProvider: data.is_provider,
       serviceCategories: data.service_categories
     });
+  },
+
+  "identity.uploadPortfolioImage": async (c: Context, input: unknown) => {
+    const auth = getAuthUser(c);
+    const parsed = uploadPortfolioImageSchema.safeParse(input);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid input", details: parsed.error.flatten() }, 400);
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    const { data: profile, error: fetchError } = await supabase
+      .from("profiles")
+      .select("is_provider")
+      .eq("clerk_user_id", auth.userId)
+      .single();
+
+    if (fetchError || !profile?.is_provider) {
+      return c.json({ error: "Only providers can upload portfolio images" }, 403);
+    }
+
+    const { imageBase64, contentType } = parsed.data;
+    const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+    // Ownership prefix from the JWT subject — never from the request body.
+    const path = `${auth.userId}/${Date.now()}.${ext}`;
+    const buffer = Buffer.from(imageBase64, "base64");
+
+    const { error } = await supabase.storage
+      .from("portfolio")
+      .upload(path, buffer, { contentType, upsert: false });
+
+    if (error) {
+      return c.json({ error: "Upload failed", details: error.message }, 500);
+    }
+
+    return c.json({ path });
   },
 
   "identity.providerOnlyPing": async (c: Context, input: unknown) => {
