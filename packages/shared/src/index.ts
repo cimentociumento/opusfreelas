@@ -6,6 +6,10 @@ export {
 export {
   profileRoleFlagsSchema,
   type ProfileRoleFlagsInput,
+  updateIdentityProfileSchema,
+  type UpdateIdentityProfileInput,
+  updateProviderSocialProfileSchema,
+  type UpdateProviderSocialProfileInput,
 } from "./identity/schemas";
 
 export * from "./demands/schemas";
