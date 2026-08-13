@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  TextInput,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
 import { useLocation } from "../../../hooks/use-location";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { serviceCategories, ServiceCategory } from "@amauc/shared";
 import { theme, useToast } from "../../../components";
+import { resolvePortfolioContentType, isProviderSocialProfileComplete } from "../../../lib/portfolio";
 
 export default function ProviderSetupScreen() {
   const router = useRouter();
@@ -18,6 +28,13 @@ export default function ProviderSetupScreen() {
   const [loading, setLoading] = useState(true);
   const { location, loading: locationLoading } = useLocation();
 
+  const [municipality, setMunicipality] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
+  const [yearsExperience, setYearsExperience] = useState("");
+  const [portfolioPaths, setPortfolioPaths] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+
   useEffect(() => {
     // Espera o modo dev/Clerk resolverem — senão o RPC dispara com o
     // isDevMode inicial (falso) e cai no caminho Clerk sem sessão real.
@@ -26,9 +43,21 @@ export default function ProviderSetupScreen() {
     let mounted = true;
     const loadProfile = async () => {
       try {
-        const profile = await callRpc<{ serviceCategories?: ServiceCategory[] }>("identity.getProfile");
-        if (mounted && profile?.serviceCategories) {
-          setSelectedCategories(profile.serviceCategories);
+        const profile = await callRpc<{
+          serviceCategories?: ServiceCategory[];
+          displayName?: string | null;
+          municipality?: string | null;
+          bio?: string | null;
+          yearsExperience?: number | null;
+          portfolioUrls?: string[];
+        }>("identity.getProfile");
+        if (mounted && profile) {
+          if (profile.serviceCategories) setSelectedCategories(profile.serviceCategories);
+          if (profile.displayName) setDisplayName(profile.displayName);
+          if (profile.municipality) setMunicipality(profile.municipality);
+          if (profile.bio) setBio(profile.bio);
+          if (profile.yearsExperience != null) setYearsExperience(String(profile.yearsExperience));
+          if (profile.portfolioUrls) setPortfolioPaths(profile.portfolioUrls);
         }
       } catch (error) {
         console.error("Failed to load profile", error);
@@ -48,6 +77,40 @@ export default function ProviderSetupScreen() {
       setSelectedCategories(selectedCategories.filter((c) => c !== cat));
     } else {
       setSelectedCategories([...selectedCategories, cat]);
+    }
+  };
+
+  const addPhoto = async () => {
+    if (portfolioPaths.length >= 6) {
+      showToast("Máximo de 6 fotos.", "error");
+      return;
+    }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      showToast("Precisamos de acesso às fotos para o portfólio.", "error");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.6,
+      base64: true,
+    });
+    if (result.canceled || !result.assets?.[0]?.base64) return;
+
+    const asset = result.assets[0];
+    setUploading(true);
+    try {
+      const { path } = await callRpc<{ path: string }>("identity.uploadPortfolioImage", {
+        imageBase64: asset.base64,
+        contentType: resolvePortfolioContentType(asset.mimeType),
+      });
+      setPortfolioPaths((prev) => [...prev, path]);
+    } catch (error: any) {
+      // Rede rural intermitente: não trava o formulário; o gate de visibilidade
+      // cobre portfólio vazio. Ver spec §Erros.
+      showToast(error.message ?? "Não foi possível enviar a foto.", "error");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -78,6 +141,31 @@ export default function ProviderSetupScreen() {
         longitude: location.longitude,
         serviceCategories: selectedCategories,
       });
+
+      const trimmedCity = municipality.trim();
+      if (trimmedCity && displayName.trim()) {
+        // updateProfile writes displayName + municipality together; reuse the
+        // reidrated displayName so we don't blank it out.
+        await callRpc("identity.updateProfile", {
+          displayName: displayName.trim(),
+          municipality: trimmedCity,
+        });
+      }
+
+      const years = Number(yearsExperience);
+      if (
+        isProviderSocialProfileComplete({
+          bio,
+          yearsExperience: Number.isFinite(years) ? years : null,
+          photoCount: portfolioPaths.length,
+        })
+      ) {
+        await callRpc("identity.updateProviderSocialProfile", {
+          bio: bio.trim(),
+          yearsExperience: Math.max(0, Math.min(60, Math.trunc(years))),
+          portfolioUrls: portfolioPaths,
+        });
+      }
 
       showToast("Perfil atualizado! Agora você pode ser encontrado por contratantes.", "success");
       router.replace("/");
@@ -118,9 +206,66 @@ export default function ProviderSetupScreen() {
         <Text style={styles.sectionSubtitle}>
           Sua localização atual será usada para mostrar você a contratantes próximos.
         </Text>
-        <View style={styles.locationBox}>
-          <Text style={styles.locationText}>Concórdia, SC (Detectado)</Text>
+        <TextInput
+          value={municipality}
+          onChangeText={setMunicipality}
+          placeholder="Sua cidade"
+          autoCapitalize="words"
+          style={styles.input}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Sobre você</Text>
+        <Text style={styles.sectionSubtitle}>
+          Conte sua experiência para contratantes conhecerem seu trabalho.
+        </Text>
+        <TextInput
+          value={bio}
+          onChangeText={setBio}
+          placeholder="Conte sua experiência (mínimo 40 caracteres)"
+          multiline
+          numberOfLines={4}
+          style={[styles.input, styles.textArea]}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Anos de experiência</Text>
+        <TextInput
+          value={yearsExperience}
+          onChangeText={setYearsExperience}
+          placeholder="Ex: 5"
+          keyboardType="number-pad"
+          style={styles.input}
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Portfólio</Text>
+        <Text style={styles.sectionSubtitle}>
+          Adicione fotos de trabalhos já realizados ({portfolioPaths.length}/6).
+        </Text>
+        <View style={styles.grid}>
+          {portfolioPaths.map((path) => (
+            // portfolioPaths guarda o caminho de storage (não a URL pública ainda,
+            // ver spec §Portfólio) — placeholder até existir endpoint de leitura assinado.
+            <View key={path} style={styles.photoThumb}>
+              <Text style={styles.photoThumbText}>Foto</Text>
+            </View>
+          ))}
         </View>
+        <Pressable
+          style={[styles.addPhotoBtn, uploading && styles.addPhotoBtnDisabled]}
+          onPress={addPhoto}
+          disabled={uploading}
+        >
+          {uploading ? (
+            <ActivityIndicator color={theme.colors.primary} />
+          ) : (
+            <Text style={styles.addPhotoBtnText}>Adicionar foto</Text>
+          )}
+        </Pressable>
       </View>
 
       <View style={styles.footer} pointerEvents={loading ? "none" : "auto"}>
@@ -182,16 +327,48 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: "#fff",
   },
-  locationBox: {
+  input: {
     backgroundColor: "#f9f9f9",
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#eee",
-  },
-  locationText: {
     fontSize: 16,
+    color: "#333",
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: "top",
+  },
+  photoThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f0f0f0",
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  photoThumbText: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "600",
+  },
+  addPhotoBtn: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  addPhotoBtnDisabled: {
+    opacity: 0.6,
+  },
+  addPhotoBtnText: {
     color: theme.colors.primary,
+    fontSize: 15,
     fontWeight: "700",
   },
   footer: {
