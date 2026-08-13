@@ -60,12 +60,15 @@ export const identityHandlers = {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from("profiles")
-      .update({
-        display_name: parsed.data.displayName,
-        municipality: parsed.data.municipality,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("clerk_user_id", auth.userId)
+      .upsert(
+        {
+          clerk_user_id: auth.userId,
+          display_name: parsed.data.displayName,
+          municipality: parsed.data.municipality,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "clerk_user_id" }
+      )
       .select("clerk_user_id, display_name, municipality")
       .single();
 
@@ -100,6 +103,13 @@ export const identityHandlers = {
     }
 
     const { bio, yearsExperience, portfolioUrls } = parsed.data;
+    // Anti-fraud gate: only paths minted by identity.uploadPortfolioImage (prefixed
+    // with the caller's own userId) count — never trust caller-supplied strings here.
+    const ownershipPrefix = `${auth.userId}/`;
+    if (!portfolioUrls.every((url) => url.startsWith(ownershipPrefix))) {
+      return c.json({ error: "Invalid portfolio paths" }, 400);
+    }
+
     const { data, error } = await supabase
       .from("profiles")
       .update({

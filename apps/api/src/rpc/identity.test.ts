@@ -72,24 +72,22 @@ describe("Identity RPC", () => {
     expect(data.municipality).toBe("Concórdia");
   });
 
-  it("updateProfile persists name and municipality", async () => {
-    fromMock.mockImplementation(() => {
-      const updateChain = chainable(() =>
-        Promise.resolve({
-          data: {
-            clerk_user_id: authState.userId,
-            display_name: "Maria Souza",
-            municipality: "Concórdia",
-          },
-          error: null,
-        })
-      );
-      return {
-        update: vi.fn(() => ({
-          eq: vi.fn(() => ({ select: vi.fn(() => ({ single: updateChain.single })) })),
-        })),
-      };
-    });
+  it("updateProfile persists name and municipality via upsert (existing user)", async () => {
+    const upsertMock = vi.fn(() => ({
+      select: vi.fn(() => ({
+        single: vi.fn(() =>
+          Promise.resolve({
+            data: {
+              clerk_user_id: authState.userId,
+              display_name: "Maria Souza",
+              municipality: "Concórdia",
+            },
+            error: null,
+          })
+        ),
+      })),
+    }));
+    fromMock.mockImplementation(() => ({ upsert: upsertMock }));
 
     const res = await post("identity.updateProfile", {
       displayName: "Maria Souza",
@@ -98,6 +96,40 @@ describe("Identity RPC", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.displayName).toBe("Maria Souza");
+    expect(upsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({ clerk_user_id: authState.userId }),
+      { onConflict: "clerk_user_id" }
+    );
+  });
+
+  it("updateProfile succeeds for a brand-new user with no pre-existing profiles row", async () => {
+    // Regression test for the S1: a fresh Clerk sign-up has zero rows in
+    // `profiles`. .update() would match 0 rows and error; .upsert() must
+    // insert instead, unblocking onboarding step 1.
+    const upsertMock = vi.fn(() => ({
+      select: vi.fn(() => ({
+        single: vi.fn(() =>
+          Promise.resolve({
+            data: {
+              clerk_user_id: authState.userId,
+              display_name: "Novo Usuário",
+              municipality: "Concórdia",
+            },
+            error: null,
+          })
+        ),
+      })),
+    }));
+    fromMock.mockImplementation(() => ({ upsert: upsertMock }));
+
+    const res = await post("identity.updateProfile", {
+      displayName: "Novo Usuário",
+      municipality: "Concórdia",
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.displayName).toBe("Novo Usuário");
+    expect(data.municipality).toBe("Concórdia");
   });
 
   it("updateProfile rejects a blank name with 400", async () => {
@@ -123,6 +155,53 @@ describe("Identity RPC", () => {
       bio: "curto",
       yearsExperience: 5,
       portfolioUrls: ["user_test_123/p1.jpg"],
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("updateProviderSocialProfile succeeds for a provider with self-owned portfolio paths", async () => {
+    let call = 0;
+    fromMock.mockImplementation(() => {
+      call += 1;
+      if (call === 1) {
+        // is_provider check
+        return chainable(() => Promise.resolve({ data: { is_provider: true }, error: null }));
+      }
+      // update().eq().select().single()
+      return chainable(() =>
+        Promise.resolve({
+          data: {
+            clerk_user_id: authState.userId,
+            bio: "Trabalho com roçada e capina há vários anos na região de Concórdia.",
+            years_experience: 5,
+            portfolio_urls: ["user_test_123/1.jpg"],
+          },
+          error: null,
+        })
+      );
+    });
+
+    const res = await post("identity.updateProviderSocialProfile", {
+      bio: "Trabalho com roçada e capina há vários anos na região de Concórdia.",
+      yearsExperience: 5,
+      portfolioUrls: ["user_test_123/1.jpg"],
+    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.portfolioUrls).toEqual(["user_test_123/1.jpg"]);
+  });
+
+  it("updateProviderSocialProfile rejects portfolio paths not owned by the caller (400)", async () => {
+    // A provider hitting /rpc directly with someone else's (or a fabricated)
+    // storage path must not be able to fake the anti-fraud upload gate.
+    fromMock.mockImplementation(() =>
+      chainable(() => Promise.resolve({ data: { is_provider: true }, error: null }))
+    );
+
+    const res = await post("identity.updateProviderSocialProfile", {
+      bio: "Trabalho com roçada e capina há vários anos na região de Concórdia.",
+      yearsExperience: 5,
+      portfolioUrls: ["someone_else/x.jpg"],
     });
     expect(res.status).toBe(400);
   });
