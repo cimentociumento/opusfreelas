@@ -117,5 +117,46 @@ Plans:
 - Off-platform closure remains explicit in V1 strategy.
 - Expansion beyond AMAUC is intentionally deferred until local liquidity metrics are healthy.
 
+## Backlog
+
+### Phase 999.1: Chat interno via Supabase Realtime (BACKLOG)
+
+**Goal:** [Captured for future planning] — hoje CLAUDE.md e a Fase 5 deste
+roadmap definem fechamento fora da plataforma (telefone/WhatsApp) como
+decisão deliberada de V1. Adicionar chat interno reverte essa decisão, não é
+só uma feature nova — precisa de spec próprio que reavalie isso
+explicitamente antes de qualquer código. Origem: `docs/superpowers/specs/2026-08-12-cadastro-bifurcado-design.md`.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.2: PostGIS mais abrangente (BACKLOG)
+
+**Goal:** [Captured for future planning] — hoje só `search_providers` usa
+geografia/PostGIS. Precisa de spec definindo quais outras queries/features
+ganhariam raio/distância (demandas por proximidade, ranking por distância no
+feed, etc.). Origem: `docs/superpowers/specs/2026-08-12-cadastro-bifurcado-design.md`.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
+### Phase 999.3: Reforma visual do restante do app (BACKLOG)
+
+**Goal:** [Captured for future planning] — reformar demandas, descoberta e
+perfil no padrão Workana/GetNinjas/99Freelas, estendendo os tokens/componentes
+NativeWind introduzidos no sub-projeto de cadastro (Fase 1). Continuação do
+`BRIEF-MIGRACAO-UI.md` já existente na branch `feat/nativewind-piloto`,
+começando pela tela piloto `demands/index.tsx`. Origem:
+`docs/superpowers/specs/2026-08-12-cadastro-bifurcado-design.md`.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd-review-backlog when ready)
+
 ---
 *Last updated: 2026-04-09 after roadmap initialization*
