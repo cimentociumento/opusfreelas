@@ -9,6 +9,8 @@ import {
 import {
   profileRoleFlagsSchema,
   updateProviderProfileSchema,
+  updateIdentityProfileSchema,
+  updateProviderSocialProfileSchema,
 } from "@amauc/shared";
 
 const providerOnlyInputSchema = z.object({
@@ -24,6 +26,12 @@ export const identityHandlers = {
       isContractor: profile.is_contractor,
       isProvider: profile.is_provider,
       serviceCategories: profile.service_categories ?? [],
+      displayName: profile.display_name ?? null,
+      avatarUrl: profile.avatar_url ?? null,
+      municipality: profile.municipality ?? null,
+      bio: profile.bio ?? null,
+      yearsExperience: profile.years_experience ?? null,
+      portfolioUrls: profile.portfolio_urls ?? [],
     });
   },
   "identity.updateRoles": async (c: Context, input: unknown) => {
@@ -38,6 +46,80 @@ export const identityHandlers = {
       clerkUserId: profile.clerk_user_id,
       isContractor: profile.is_contractor,
       isProvider: profile.is_provider,
+    });
+  },
+
+  "identity.updateProfile": async (c: Context, input: unknown) => {
+    const auth = getAuthUser(c);
+    const parsed = updateIdentityProfileSchema.safeParse(input);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid input", details: parsed.error.flatten() }, 400);
+    }
+
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({
+        display_name: parsed.data.displayName,
+        municipality: parsed.data.municipality,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("clerk_user_id", auth.userId)
+      .select("clerk_user_id, display_name, municipality")
+      .single();
+
+    if (error) {
+      return c.json({ error: "Database error", details: error.message }, 500);
+    }
+
+    return c.json({
+      clerkUserId: data.clerk_user_id,
+      displayName: data.display_name,
+      municipality: data.municipality,
+    });
+  },
+
+  "identity.updateProviderSocialProfile": async (c: Context, input: unknown) => {
+    const auth = getAuthUser(c);
+    const parsed = updateProviderSocialProfileSchema.safeParse(input);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid input", details: parsed.error.flatten() }, 400);
+    }
+
+    const supabase = getSupabaseAdmin();
+
+    const { data: profile, error: fetchError } = await supabase
+      .from("profiles")
+      .select("is_provider")
+      .eq("clerk_user_id", auth.userId)
+      .single();
+
+    if (fetchError || !profile?.is_provider) {
+      return c.json({ error: "Only providers can update social profile" }, 403);
+    }
+
+    const { bio, yearsExperience, portfolioUrls } = parsed.data;
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({
+        bio,
+        years_experience: yearsExperience,
+        portfolio_urls: portfolioUrls,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("clerk_user_id", auth.userId)
+      .select("clerk_user_id, bio, years_experience, portfolio_urls")
+      .single();
+
+    if (error) {
+      return c.json({ error: "Database error", details: error.message }, 500);
+    }
+
+    return c.json({
+      clerkUserId: data.clerk_user_id,
+      bio: data.bio,
+      yearsExperience: data.years_experience,
+      portfolioUrls: data.portfolio_urls,
     });
   },
 

@@ -8,13 +8,21 @@ export type ProfileRow = {
   is_contractor: boolean;
   is_provider: boolean;
   service_categories?: string[];
+  display_name?: string | null;
+  avatar_url?: string | null;
+  municipality?: string | null;
+  bio?: string | null;
+  years_experience?: number | null;
+  portfolio_urls?: string[] | null;
 };
 
 export async function getProfileByClerkUserId(userId: string): Promise<ProfileRow> {
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("profiles")
-    .select("clerk_user_id, is_contractor, is_provider, service_categories")
+    .select(
+      "clerk_user_id, is_contractor, is_provider, service_categories, display_name, avatar_url, municipality, bio, years_experience, portfolio_urls"
+    )
     .eq("clerk_user_id", userId)
     .maybeSingle<ProfileRow>();
 
@@ -28,6 +36,12 @@ export async function getProfileByClerkUserId(userId: string): Promise<ProfileRo
       is_contractor: true,
       is_provider: false,
       service_categories: [],
+      display_name: null,
+      avatar_url: null,
+      municipality: null,
+      bio: null,
+      years_experience: null,
+      portfolio_urls: [],
     }
   );
 }
