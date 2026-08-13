@@ -164,13 +164,13 @@ export default function ProviderSetupScreen() {
       }
 
       const years = Number(yearsExperience);
-      if (
-        isProviderSocialProfileComplete({
-          bio,
-          yearsExperience: Number.isFinite(years) ? years : null,
-          photoCount: portfolioPaths.length,
-        })
-      ) {
+      const isComplete = isProviderSocialProfileComplete({
+        bio,
+        yearsExperience: Number.isFinite(years) ? years : null,
+        photoCount: portfolioPaths.length,
+      });
+
+      if (isComplete) {
         await callRpc("identity.updateProviderSocialProfile", {
           bio: bio.trim(),
           yearsExperience: Math.max(0, Math.min(60, Math.trunc(years))),
@@ -178,7 +178,17 @@ export default function ProviderSetupScreen() {
         });
       }
 
-      showToast("Perfil atualizado! Agora você pode ser encontrado por contratantes.", "success");
+      // Only claim search visibility when the completeness gate actually
+      // passed — skipping updateProviderSocialProfile above leaves the
+      // provider hidden from search, and the message must not lie about that.
+      if (isComplete) {
+        showToast("Perfil atualizado! Agora você pode ser encontrado por contratantes.", "success");
+      } else {
+        showToast(
+          "Perfil salvo. Complete sua bio (mín. 40 caracteres), anos de experiência e ao menos 1 foto para aparecer nas buscas.",
+          "info"
+        );
+      }
       router.replace("/");
     } catch (error: any) {
       isSavingRef.current = false;
