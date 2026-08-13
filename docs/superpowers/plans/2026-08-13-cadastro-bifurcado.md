@@ -1819,3 +1819,25 @@ gh pr create --title "feat: cadastro bifurcado (contratante/prestador) + perfil 
 **Gap consciente:** o teste de integração real de `search_providers` (spec §Testes) não é coberto por teste JS — o mock de Supabase da suíte da API não exercita SQL. Substituído por verificação manual via `supabase db push` + query psql (Task 2 Step 3) e pelo fluxo E2E manual (Task 11 Step 7), que é a evidência honesta possível sem um Supabase de teste com PostGIS provisionado no CI. Registrado como limitação, não como placeholder.
 
 **Type consistency:** `callRpc` (assinatura `<T>(procedure, input?)`), `useOnboardingStatus(): { needsOnboarding, isReady }`, `ProfileRow` com campos snake_case, payloads RPC camelCase (`displayName`, `yearsExperience`, `portfolioUrls`) — consistentes entre Tasks 4, 5, 8, 9, 11. `buildPortfolioPath(userId, fileName)` / `uploadPortfolioImage(userId, fileUri, fileName)` idênticos entre Task 11 Steps 2 e 4. ✓
+
+---
+
+## Deviation (2026-08-13, during execution): Task 11 split — portfolio upload via API
+
+**Why:** The original Task 11 had the mobile app upload photos DIRECTLY to Supabase
+Storage. That violates CLAUDE.md §2/§9 ("UI nunca fala direto com Supabase"), and the
+mobile app has no Supabase client / anon key. User decision: upload via the Hono API.
+Also: DB is paused and expo-image-picker not installed → code + unit tests now, E2E deferred.
+
+Task 11 is REPLACED by:
+
+### Task 11a: API — `identity.uploadPortfolioImage` handler (+ shared contract)
+- `@amauc/shared`: add `uploadPortfolioImageSchema = z.object({ imageBase64: z.string().min(1).max(2_800_000), contentType: z.enum(["image/jpeg","image/png","image/webp"]) })` + type, re-export.
+- `apps/api/src/rpc/identity.ts`: add handler `identity.uploadPortfolioImage` — safeParse→400; fetch `is_provider` (403 if not provider); build path `${auth.userId}/${Date.now()}.${ext}` (ownership prefix from JWT, never from input); `getSupabaseAdmin().storage.from("portfolio").upload(path, Buffer.from(imageBase64,"base64"), { contentType, upsert:false })`; 500 on error; return `{ path }`.
+- Test (`apps/api/src/rpc/portfolio-upload.test.ts`, mocked storage): valid provider → 200 `{path}` under userId prefix; non-provider → 403; invalid input → 400.
+
+### Task 11b: mobile — provider-setup extension
+- Install `expo-image-picker`.
+- Extend `apps/mobile/app/(app)/profile/provider-setup.tsx`: real `municipality` field (replace hardcoded "Concórdia, SC (Detectado)"), `bio` (multiline), `yearsExperience` (numeric), portfolio picker that reads a photo via expo-image-picker, base64-encodes it, calls `callRpc("identity.uploadPortfolioImage", { imageBase64, contentType })`, collects returned `path`s; reidrate all from `identity.getProfile`.
+- On save: `identity.updateProviderProfile` (categories+location, existing) + `identity.updateProfile` (municipality, if changed) + `identity.updateProviderSocialProfile` (bio/years/portfolioUrls) when complete (bio≥40, ≥1 photo, years finite).
+- Extract a pure helper for the base64/path/validation logic → unit test it. E2E (real picker + upload + appears in search) DEFERRED to human (DB paused).
