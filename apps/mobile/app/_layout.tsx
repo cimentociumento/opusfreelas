@@ -1,3 +1,5 @@
+import "../global.css";
+
 import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { Stack, Redirect } from "expo-router";
 import { Text, View } from "react-native";
