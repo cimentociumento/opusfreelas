@@ -23,6 +23,7 @@ export default function ProviderSetupScreen() {
   const { isReady: isAuthReady } = useEffectiveUserId();
   const { showToast } = useToast();
   const isSavingRef = useRef(false);
+  const providerRoleEnsuredRef = useRef(false);
 
   const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,6 +81,12 @@ export default function ProviderSetupScreen() {
     }
   };
 
+  async function ensureProviderRole() {
+    if (providerRoleEnsuredRef.current) return;
+    await callRpc("identity.updateRoles", { isContractor: true, isProvider: true });
+    providerRoleEnsuredRef.current = true;
+  }
+
   const addPhoto = async () => {
     if (portfolioPaths.length >= 6) {
       showToast("Máximo de 6 fotos.", "error");
@@ -100,6 +107,10 @@ export default function ProviderSetupScreen() {
     const asset = result.assets[0];
     setUploading(true);
     try {
+      // Entrar nesta tela e adicionar foto é intenção provider inequívoca — promove
+      // o papel antes do upload para não bater no gate 403 da API (contratante que
+      // chega pelo botão "Configurar Meu Perfil" ainda não tem is_provider=true).
+      await ensureProviderRole();
       const { path } = await callRpc<{ path: string }>("identity.uploadPortfolioImage", {
         imageBase64: asset.base64,
         contentType: resolvePortfolioContentType(asset.mimeType),
@@ -204,7 +215,7 @@ export default function ProviderSetupScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Localização</Text>
         <Text style={styles.sectionSubtitle}>
-          Sua localização atual será usada para mostrar você a contratantes próximos.
+          Informe a cidade onde você atende os contratantes.
         </Text>
         <TextInput
           value={municipality}
