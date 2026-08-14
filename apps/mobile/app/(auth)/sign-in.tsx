@@ -33,8 +33,12 @@ export default function SignInScreen() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [needsSecondFactor, setNeedsSecondFactor] = useState(false);
+  const [secondFactorStrategy, setSecondFactorStrategy] = useState<string | null>(null);
 
   const loaded = authLoaded && signInLoaded;
 
@@ -76,6 +80,21 @@ export default function SignInScreen() {
         return;
       }
 
+      if (result.status === "needs_second_factor") {
+        const factor = result.supportedSecondFactors?.[0] as any;
+        if (factor) {
+          if (factor.strategy === "phone_code") {
+            await signIn.prepareSecondFactor({
+              strategy: "phone_code",
+              phoneNumberId: factor.phoneNumberId,
+            });
+          }
+          setSecondFactorStrategy(factor.strategy);
+          setNeedsSecondFactor(true);
+          return;
+        }
+      }
+
       throw new Error(`Login incompleto (${result.status ?? "desconhecido"}).`);
     } catch (err) {
       setError(getErrorMessage(err, "Não foi possível realizar o login. Verifique suas credenciais."));
@@ -84,53 +103,134 @@ export default function SignInScreen() {
     }
   }
 
+  async function handleVerifySecondFactor() {
+    if (!loaded || !signIn || !secondFactorStrategy) return;
+
+    const trimmedCode = code.trim();
+    if (!trimmedCode) {
+      setError("Informe o código de verificação.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await signIn.attemptSecondFactor({
+        strategy: secondFactorStrategy as any,
+        code: trimmedCode,
+      });
+
+      if (result.status === "complete") {
+        await activateClerkSession(result.createdSessionId);
+        return;
+      }
+
+      throw new Error(`Login incompleto (${result.status ?? "desconhecido"}).`);
+    } catch (err) {
+      setError(getErrorMessage(err, "Código inválido ou expirado."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Entrar na Conta</Text>
-      <Text style={styles.subtitle}>
-        Informe seu nome de usuário e senha para acessar o Opus Freelas.
-      </Text>
+      {!needsSecondFactor ? (
+        <Text style={styles.subtitle}>
+          Informe seu nome de usuário e senha para acessar o Opus Freelas.
+        </Text>
+      ) : (
+        <Text style={styles.subtitle}>
+          {secondFactorStrategy === "phone_code"
+            ? "Um código de verificação foi enviado para o seu telefone."
+            : "Digite o código de verificação do seu aplicativo ou SMS."}
+        </Text>
+      )}
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Nome de Usuário (Username)</Text>
-        <TextInput
-          value={username}
-          onChangeText={setUsername}
-          placeholder="Digite seu nome de usuário"
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.input}
-        />
-      </View>
+      {!needsSecondFactor ? (
+        <>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Nome de Usuário (Username)</Text>
+            <TextInput
+              value={username}
+              onChangeText={setUsername}
+              placeholder="Digite seu nome de usuário"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.input}
+            />
+          </View>
 
-      <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Senha</Text>
-        <TextInput
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Digite sua senha"
-          secureTextEntry
-          autoCapitalize="none"
-          style={styles.input}
-        />
-      </View>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Senha</Text>
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Digite sua senha"
+              secureTextEntry
+              autoCapitalize="none"
+              style={styles.input}
+            />
+          </View>
 
-      <Pressable
-        style={[styles.button, (loading || !username.trim() || !password) && styles.buttonDisabled]}
-        onPress={handleSignIn}
-        disabled={loading || !username.trim() || !password}
-      >
-        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonLabel}>Entrar</Text>}
-      </Pressable>
+          <Pressable
+            style={[styles.button, (loading || !username.trim() || !password) && styles.buttonDisabled]}
+            onPress={handleSignIn}
+            disabled={loading || !username.trim() || !password}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonLabel}>Entrar</Text>}
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Código de Verificação</Text>
+            <TextInput
+              value={code}
+              onChangeText={setCode}
+              placeholder="Digite o código"
+              keyboardType="number-pad"
+              autoComplete="one-time-code"
+              textContentType="oneTimeCode"
+              maxLength={6}
+              style={styles.input}
+            />
+          </View>
+
+          <Pressable
+            style={[styles.button, (loading || !code.trim()) && styles.buttonDisabled]}
+            onPress={handleVerifySecondFactor}
+            disabled={loading || !code.trim()}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonLabel}>Confirmar Código</Text>}
+          </Pressable>
+
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => {
+              setNeedsSecondFactor(false);
+              setCode("");
+              setError(null);
+            }}
+            disabled={loading}
+          >
+            <Text style={styles.secondaryButtonLabel}>Voltar</Text>
+          </Pressable>
+        </>
+      )}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <View style={styles.footerLinkContainer}>
-        <Text style={styles.footerText}>Não tem uma conta?</Text>
-        <Pressable onPress={() => router.push("/sign-up")}>
-          <Text style={styles.linkText}> Cadastre-se</Text>
-        </Pressable>
-      </View>
+      {!needsSecondFactor && (
+        <View style={styles.footerLinkContainer}>
+          <Text style={styles.footerText}>Não tem uma conta?</Text>
+          <Pressable onPress={() => router.push("/sign-up")}>
+            <Text style={styles.linkText}> Cadastre-se</Text>
+          </Pressable>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -184,6 +284,16 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 16,
+  },
+  secondaryButton: {
+    alignItems: "center",
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  secondaryButtonLabel: {
+    color: "#116530",
+    fontWeight: "600",
+    fontSize: 14,
   },
   error: {
     color: "#b00020",
