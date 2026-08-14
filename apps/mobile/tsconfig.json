@@ -4,8 +4,12 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@amauc/shared": ["../../packages/shared/src/index.ts"]
+      "@/*": [
+        "./*"
+      ],
+      "@amauc/shared": [
+        "../../packages/shared/src/index.ts"
+      ]
     }
   },
   "include": [
@@ -15,5 +19,7 @@
     "expo-env.d.ts",
     "nativewind-env.d.ts"
   ],
-  "exclude": ["assets/**"]
+  "exclude": [
+    "assets/**"
+  ]
 }

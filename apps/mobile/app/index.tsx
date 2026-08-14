@@ -9,6 +9,7 @@ export default function HomeScreen() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
+      <View testID="nativewind-gate1-probe" className="bg-red-500 h-10" />
       <ScrollView style={styles.container}>
         <View style={styles.hero}>
           <Text style={styles.title}>Opus Freelas</Text>

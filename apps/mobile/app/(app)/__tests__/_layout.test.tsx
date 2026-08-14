@@ -19,13 +19,23 @@ jest.mock("../../../hooks/use-development-mode", () => ({
 }));
 
 describe("AppGroupLayout onboarding guard", () => {
+<<<<<<< HEAD
   beforeEach(() => jest.resetModules());
+=======
+  beforeEach(() => {
+    jest.resetModules();
+  });
+>>>>>>> origin/feat/nativewind-piloto
 
   it("renders the stack when onboarding is complete", async () => {
     jest.doMock("../../../hooks/use-onboarding-status", () => ({
       useOnboardingStatus: () => ({ needsOnboarding: false, isReady: true }),
     }));
     const AppGroupLayout = require("../_layout").default;
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/feat/nativewind-piloto
     const { getByText } = await render(<AppGroupLayout />);
     expect(getByText("stack")).toBeTruthy();
   });
@@ -35,6 +45,10 @@ describe("AppGroupLayout onboarding guard", () => {
       useOnboardingStatus: () => ({ needsOnboarding: true, isReady: true }),
     }));
     const AppGroupLayout = require("../_layout").default;
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/feat/nativewind-piloto
     const { getByText } = await render(<AppGroupLayout />);
     expect(getByText("redirect:/onboarding")).toBeTruthy();
   });

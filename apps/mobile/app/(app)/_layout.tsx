@@ -35,6 +35,18 @@ export default function AppGroupLayout() {
     );
   }
 
+  if (!onboardingReady) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#116530" />
+      </View>
+    );
+  }
+
+  if (needsOnboarding) {
+    return <Redirect href="/onboarding" />;
+  }
+
   return <Stack screenOptions={{ headerShown: true }} />;
 }
 

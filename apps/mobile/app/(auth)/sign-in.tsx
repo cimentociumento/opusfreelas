@@ -5,8 +5,74 @@ import {
   useSignIn,
 } from "@clerk/clerk-expo";
 import { Redirect, useRouter } from "expo-router";
+<<<<<<< HEAD
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, ScrollView } from "react-native";
+=======
+import { useRef, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useRpcWithDevMode } from "../../hooks/use-rpc-with-dev-mode";
+
+function formatE164(phone: string) {
+  let trimmed = phone.trim();
+
+  // Trata prefixo internacional 00 (ex: 001 para EUA)
+  if (trimmed.startsWith("00")) {
+    trimmed = "+" + trimmed.slice(2);
+  }
+
+  if (trimmed.startsWith("+")) {
+    let digits = trimmed.replace(/\D/g, "");
+    if (digits.startsWith("550")) {
+      digits = "55" + digits.slice(3);
+    }
+    return `+${digits}`;
+  }
+
+  let digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 0) return "";
+
+  if (digits.startsWith("0")) {
+    digits = digits.replace(/^0+/, "");
+  }
+
+  if (!digits.startsWith("55")) {
+    digits = `55${digits}`;
+  }
+
+  const localPart = digits.slice(4);
+  if (localPart.length === 8 && /^[6-9]/.test(localPart)) {
+    const ddd = digits.slice(2, 4);
+    digits = `55${ddd}9${localPart}`;
+  }
+
+  return `+${digits}`;
+}
+
+function normalizeOtpCode(code: string) {
+  return code.replace(/\D/g, "").trim();
+}
+
+function isSignUpIfMissingTransferError(error: unknown) {
+  if (!isClerkAPIResponseError(error)) return false;
+  return error.errors.some((e) => e.code === "sign_up_if_missing_transfer");
+}
+
+function isVerificationCodeError(error: unknown) {
+  if (!isClerkAPIResponseError(error)) return false;
+  return error.errors.some((e) =>
+    ["form_code_incorrect", "verification_expired", "verification_failed", "form_param_format_invalid"].includes(e.code ?? ""),
+  );
+}
+
+function isSignInNotIdentifiedError(error: unknown) {
+  if (!isClerkAPIResponseError(error)) return false;
+  return error.errors.some((e) => {
+    const msg = `${e.message ?? ""} ${e.longMessage ?? ""}`.toLowerCase();
+    return e.code === "sign_in_attempt_not_identified" || msg.includes("not identified") || msg.includes("identify first");
+  });
+}
+>>>>>>> origin/feat/nativewind-piloto
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message.trim()) return error.message;
@@ -30,6 +96,11 @@ export default function SignInScreen() {
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { setActive: activateSession } = useClerk();
   const { signIn, isLoaded: signInLoaded } = useSignIn();
+<<<<<<< HEAD
+=======
+  const { signUp, isLoaded: signUpLoaded } = useSignUp();
+  const { callRpc } = useRpcWithDevMode();
+>>>>>>> origin/feat/nativewind-piloto
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -52,7 +123,14 @@ export default function SignInScreen() {
   async function activateClerkSession(sessionId: string | null | undefined) {
     if (!sessionId) throw new Error("Sessão não foi criada. Tente novamente.");
     await activateSession({ session: sessionId });
-    router.replace("/");
+
+    try {
+      const profile = await callRpc<{ displayName?: string | null }>("identity.getProfile");
+      router.replace(profile.displayName ? "/" : "/onboarding");
+    } catch (error) {
+      console.error("[sign-in.activateClerkSession] Failed to check profile", error);
+      router.replace("/onboarding");
+    }
   }
 
   async function handleSignIn() {

@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+<<<<<<< HEAD
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   presets: [require("nativewind/preset")],
   theme: {
@@ -21,6 +22,13 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
     },
+=======
+  darkMode: "class",
+  presets: [require("nativewind/preset")],
+  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  theme: {
+    extend: {},
+>>>>>>> origin/feat/nativewind-piloto
   },
   plugins: [],
 };

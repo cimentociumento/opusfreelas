@@ -419,14 +419,99 @@ describe("RPC Features (Demands & Discovery)", () => {
     });
   });
 
+  describe("Identity RPC", () => {
+    it("getProfile returns displayName and avatarUrl", async () => {
+      const mockProfile = {
+        clerk_user_id: authState.userId,
+        is_contractor: true,
+        is_provider: false,
+        display_name: "Maria Souza",
+        avatar_url: null,
+        service_categories: [],
+      };
+
+      fromMock.mockImplementation(() => ({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+          }),
+        }),
+      }));
+
+      const res = await app.request("/rpc", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ procedure: "identity.getProfile", input: {} }),
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.displayName).toBe("Maria Souza");
+      expect(data.avatarUrl).toBeNull();
+    });
+
+    it("updateProfile saves displayName", async () => {
+      const updatedRow = {
+        clerk_user_id: authState.userId,
+        display_name: "João Pedro",
+      };
+
+      fromMock.mockImplementation(() => ({
+        upsert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: updatedRow, error: null }),
+          }),
+        }),
+      }));
+
+      const res = await app.request("/rpc", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          procedure: "identity.updateProfile",
+          input: { displayName: "João Pedro" },
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.displayName).toBe("João Pedro");
+    });
+
+    it("updateProfile rejects a name shorter than 2 characters", async () => {
+      const res = await app.request("/rpc", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          procedure: "identity.updateProfile",
+          input: { displayName: "A" },
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe("Invalid input");
+    });
+  });
+
   describe("Discovery RPC", () => {
     it("searches providers successfully", async () => {
       const mockProviders = [
-        { 
-          clerk_user_id: "provider_1", 
-          is_provider: true, 
+        {
+          clerk_user_id: "provider_1",
+          is_provider: true,
+          display_name: "Carlos Ferreira",
           service_categories: ["Roçada / Capina"],
-          distance_meters: 1500 
+          distance_meters: 1500
         }
       ];
 
@@ -453,6 +538,7 @@ describe("RPC Features (Demands & Discovery)", () => {
       const data = await res.json();
       expect(data).toHaveLength(1);
       expect(data[0].clerkUserId).toBe("provider_1");
+      expect(data[0].displayName).toBe("Carlos Ferreira");
       expect(data[0].distanceMeters).toBe(1500);
     });
   });

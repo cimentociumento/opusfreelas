@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+<<<<<<< HEAD
 
 @layer base {
   :root {
@@ -38,3 +39,5 @@
     --destructive-foreground: 0 0% 100%;
   }
 }
+=======
+>>>>>>> origin/feat/nativewind-piloto
