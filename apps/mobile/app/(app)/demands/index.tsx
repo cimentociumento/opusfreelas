@@ -5,19 +5,21 @@ import {
   View,
   FlatList,
   ActivityIndicator,
-  RefreshControl,
-} from "react-native";
+  RefreshControl } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Stack, useRouter } from "expo-router";
-import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useRpc } from "../../../hooks/use-rpc";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { isDemandOwner } from "../../../lib/auth-constants";
 import { DemandResponse } from "@amauc/shared";
-import { Card, Button, theme, useToast } from "../../../components";
+import { Card } from "../../../components/Card";
+import { Button } from "../../../components/Button";
+import { useToast } from "../../../components/Toast";
+import { theme } from "../../../components/theme";
 
 export default function MyDemandsScreen() {
   const router = useRouter();
-  const { callRpc } = useRpcWithDevMode();
+  const { callRpc } = useRpc();
   const { userId: currentUserId, isReady: isAuthReady } = useEffectiveUserId();
   const { showToast } = useToast();
   
@@ -167,41 +169,33 @@ export default function MyDemandsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-  },
+    backgroundColor: theme.colors.background },
   list: {
     padding: theme.spacing.md,
-    gap: theme.spacing.md,
-  },
+    gap: theme.spacing.md },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: theme.spacing.md,
-  },
+    gap: theme.spacing.md },
   loadingText: {
     ...theme.typography.body1,
-    color: theme.colors.textSecondary,
-  },
+    color: theme.colors.textSecondary },
   demandCard: {
-    marginBottom: theme.spacing.md,
-  },
+    marginBottom: theme.spacing.md },
   demandHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
-  },
+    marginBottom: theme.spacing.md },
   serviceType: {
     ...theme.typography.h3,
     color: theme.colors.primary,
-    flex: 1,
-  },
+    flex: 1 },
   statusBadge: {
     paddingVertical: theme.spacing.xs,
     paddingHorizontal: theme.spacing.sm,
-    borderRadius: theme.borderRadius.sm,
-  },
+    borderRadius: theme.borderRadius.sm },
   status_aberta: { backgroundColor: theme.colors.primaryLight },
   status_em_contato: { backgroundColor: theme.colors.secondaryLight },
   status_concluida: { backgroundColor: theme.colors.successLight || "#e6fffa" },
@@ -210,45 +204,35 @@ const styles = StyleSheet.create({
   statusText: {
     ...theme.typography.caption,
     fontWeight: "700",
-    color: theme.colors.text,
-  },
+    color: theme.colors.text },
   description: {
     ...theme.typography.body2,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.md,
-    lineHeight: 20,
-  },
+    lineHeight: 20 },
   demandFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
-  },
+    marginBottom: theme.spacing.md },
   footerText: {
     ...theme.typography.caption,
-    color: theme.colors.textSecondary,
-  },
+    color: theme.colors.textSecondary },
   actions: {
     flexDirection: "row",
-    gap: theme.spacing.sm,
-  },
+    gap: theme.spacing.sm },
   actionBtn: {
-    flex: 1,
-  },
+    flex: 1 },
   emptyState: {
     padding: theme.spacing.xl,
     alignItems: "center",
-    gap: theme.spacing.md,
-  },
+    gap: theme.spacing.md },
   emptyTitle: {
     ...theme.typography.h3,
     color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-  },
+    marginBottom: theme.spacing.sm },
   emptySubtitle: {
     ...theme.typography.body1,
     color: theme.colors.textSecondary,
     textAlign: "center",
-    marginBottom: theme.spacing.lg,
-  },
-});
+    marginBottom: theme.spacing.lg } });

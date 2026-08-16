@@ -8,13 +8,10 @@ export {
   type ProfileRoleFlagsInput,
   updateIdentityProfileSchema,
   type UpdateIdentityProfileInput,
-<<<<<<< HEAD
   updateProviderSocialProfileSchema,
   type UpdateProviderSocialProfileInput,
   uploadPortfolioImageSchema,
   type UploadPortfolioImageInput,
-=======
->>>>>>> origin/feat/nativewind-piloto
 } from "./identity/schemas";
 
 export * from "./demands/schemas";

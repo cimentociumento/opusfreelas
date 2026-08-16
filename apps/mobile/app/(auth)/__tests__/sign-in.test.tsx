@@ -5,130 +5,100 @@ const mockReplace = jest.fn();
 
 jest.mock("expo-router", () => ({
   Redirect: () => null,
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace, push: jest.fn() }),
 }));
 
 function makeSignIn() {
   return {
     status: "needs_identifier" as string | null,
-    supportedFirstFactors: null as Array<{ strategy: string; phoneNumberId?: string }> | null,
-    firstFactorVerification: null,
+    supportedSecondFactors: null as Array<{ strategy: string; phoneNumberId?: string }> | null,
     createdSessionId: null as string | null,
     create: jest.fn(),
-    prepareFirstFactor: jest.fn(async () => undefined),
-    attemptFirstFactor: jest.fn(),
-  };
-}
-
-function makeSignUp() {
-  return {
-    status: null as string | null,
-    createdSessionId: null as string | null,
-    missingFields: [] as string[],
-    create: jest.fn(async () => undefined),
-    preparePhoneNumberVerification: jest.fn(async () => undefined),
-    attemptPhoneNumberVerification: jest.fn(),
-    update: jest.fn(),
+    prepareSecondFactor: jest.fn(async () => undefined),
+    attemptSecondFactor: jest.fn(),
   };
 }
 
 let mockSignIn: ReturnType<typeof makeSignIn>;
-let mockSignUp: ReturnType<typeof makeSignUp>;
 const mockSetActive = jest.fn();
 
 jest.mock("@clerk/clerk-expo", () => ({
   useAuth: () => ({ isLoaded: true, isSignedIn: false }),
   useClerk: () => ({ setActive: mockSetActive }),
   useSignIn: () => ({ signIn: mockSignIn, isLoaded: true }),
-  useSignUp: () => ({ signUp: mockSignUp, isLoaded: true }),
   isClerkAPIResponseError: (error: unknown) =>
     typeof error === "object" && error !== null && "clerkError" in error,
 }));
 
 const mockCallRpc = jest.fn();
-jest.mock("../../../hooks/use-rpc-with-dev-mode", () => ({
-  useRpcWithDevMode: () => ({ callRpc: mockCallRpc }),
+jest.mock("../../../hooks/use-rpc", () => ({
+  useRpc: () => ({ callRpc: mockCallRpc }),
 }));
 
 import SignInScreen from "../sign-in";
 
-describe("SignInScreen sendCode", () => {
+describe("SignInScreen", () => {
+  jest.setTimeout(15000);
+
   beforeEach(() => {
     mockSignIn = makeSignIn();
-    mockSignUp = makeSignUp();
     mockSetActive.mockClear();
     mockReplace.mockClear();
     mockCallRpc.mockReset();
   });
 
-  it("tries signIn.create() first for a phone that already has an account", async () => {
-    mockSignIn.create.mockImplementation(async () => {
-      mockSignIn.status = "needs_first_factor";
-      mockSignIn.supportedFirstFactors = [{ strategy: "phone_code", phoneNumberId: "phone_1" }];
+  it("signs in with username and password when credentials are valid", async () => {
+    mockSignIn.create.mockResolvedValue({
+      status: "complete",
+      createdSessionId: "sess_123",
     });
+    mockCallRpc.mockResolvedValue({ displayName: "João Pedro" });
 
     const { getByPlaceholderText, getByText } = await render(<SignInScreen />);
 
-    await fireEvent.changeText(getByPlaceholderText("+55 49 99999-9999"), "49999999999");
-    await fireEvent.press(getByText("Enviar codigo"));
+    await fireEvent.changeText(getByPlaceholderText("Digite seu nome de usuário"), "joaopedro");
+    await fireEvent.changeText(getByPlaceholderText("Digite sua senha"), "senha123");
+    await fireEvent.press(getByText("Entrar"));
 
     await waitFor(() => expect(mockSignIn.create).toHaveBeenCalledTimes(1));
-
-    expect(mockSignIn.create).toHaveBeenCalledWith({ identifier: "+5549999999999" });
-    expect(mockSignIn.prepareFirstFactor).toHaveBeenCalledWith({
-      strategy: "phone_code",
-      phoneNumberId: "phone_1",
+    expect(mockSignIn.create).toHaveBeenCalledWith({
+      identifier: "joaopedro",
+      password: "senha123",
     });
-    expect(mockSignUp.create).not.toHaveBeenCalled();
-    await waitFor(() => expect(getByText(/Codigo enviado/)).toBeTruthy());
+    await waitFor(() => expect(mockSetActive).toHaveBeenCalledWith({ session: "sess_123" }));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/"));
   });
 
-  it("falls back to signUp.create() only when signIn reports the identifier is unknown", async () => {
+  it("shows an error when the username is not found", async () => {
     mockSignIn.create.mockImplementation(async () => {
-      const error = {
+      throw {
         clerkError: true,
         errors: [{ code: "form_identifier_not_found" }],
       };
-      throw error;
     });
 
-    const { getByPlaceholderText, getByText } = await render(<SignInScreen />);
+    const { getByPlaceholderText, getByText, findByText } = await render(<SignInScreen />);
 
-    await fireEvent.changeText(getByPlaceholderText("+55 49 99999-9999"), "49999999999");
-    await fireEvent.press(getByText("Enviar codigo"));
+    await fireEvent.changeText(getByPlaceholderText("Digite seu nome de usuário"), "inexistente");
+    await fireEvent.changeText(getByPlaceholderText("Digite sua senha"), "senha123");
+    await fireEvent.press(getByText("Entrar"));
 
-    await waitFor(() => expect(mockSignUp.create).toHaveBeenCalledTimes(1));
-
-    expect(mockSignIn.create).toHaveBeenCalledWith({ identifier: "+5549999999999" });
-    expect(mockSignUp.create).toHaveBeenCalledWith({
-      phoneNumber: "+5549999999999",
-      legalAccepted: true,
-    });
-    expect(mockSignUp.preparePhoneNumberVerification).toHaveBeenCalledWith({ strategy: "phone_code" });
-    await waitFor(() => expect(getByText(/Codigo enviado/)).toBeTruthy());
+    expect(await findByText("Usuário não encontrado. Verifique o nome de usuário digitado.")).toBeTruthy();
   });
 
-  describe("SignInScreen post-verification redirect", () => {
+  describe("post-verification redirect", () => {
     it("redirects to /onboarding when the profile has no displayName", async () => {
-      mockSignIn.status = "needs_first_factor";
-      mockSignIn.firstFactorVerification = { status: "verified" } as any;
-      mockSignIn.createdSessionId = "sess_123";
-      mockSignIn.attemptFirstFactor = jest.fn(async () => {
-        mockSignIn.status = "complete";
+      mockSignIn.create.mockResolvedValue({
+        status: "complete",
+        createdSessionId: "sess_123",
       });
       mockCallRpc.mockResolvedValue({ displayName: null });
 
       const { getByPlaceholderText, getByText } = await render(<SignInScreen />);
-      await fireEvent.changeText(getByPlaceholderText("+55 49 99999-9999"), "49999999999");
-      mockSignIn.create.mockImplementation(async () => {
-        mockSignIn.status = "needs_first_factor";
-        mockSignIn.supportedFirstFactors = [{ strategy: "phone_code", phoneNumberId: "phone_1" }];
-      });
-      await fireEvent.press(getByText("Enviar codigo"));
-      await waitFor(() => expect(getByText(/Codigo enviado/)).toBeTruthy());
 
-      await fireEvent.changeText(getByPlaceholderText("Codigo OTP"), "123456");
-      await fireEvent.press(getByText("Confirmar codigo"));
+      await fireEvent.changeText(getByPlaceholderText("Digite seu nome de usuário"), "joaopedro");
+      await fireEvent.changeText(getByPlaceholderText("Digite sua senha"), "senha123");
+      await fireEvent.press(getByText("Entrar"));
 
       await waitFor(() => expect(mockCallRpc).toHaveBeenCalledWith("identity.getProfile"));
       await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/onboarding"));

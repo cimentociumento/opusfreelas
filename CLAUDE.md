@@ -22,8 +22,8 @@ supabase/        migrations · RLS · PostgreSQL 17 + PostGIS
 Fluxo de dados obrigatório — nunca curto-circuitar:
 `UI → hook/provider → cliente RPC → handler Hono → Supabase (RLS)`
 
-Auth: **Clerk** (OTP por telefone + JWT). `DEV_BYPASS_TOKEN` existe para dev e
-é bloqueado quando `NODE_ENV=production` — essa checagem é sagrada.
+Auth: **Clerk** (OTP por telefone + JWT). Não existe bypass de autenticação
+para dev — todo request passa por verificação real de JWT do Clerk.
 
 ## Comandos
 

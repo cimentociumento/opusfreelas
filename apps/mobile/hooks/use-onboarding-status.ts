@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useEffectiveUserId } from "./use-effective-user-id";
-import { useRpcWithDevMode } from "./use-rpc-with-dev-mode";
+import { useRpc } from "./use-rpc";
 
 export type OnboardingStatus = {
   /** null enquanto ainda não sabemos (RPC em andamento) */
@@ -14,7 +14,7 @@ export type OnboardingStatus = {
  */
 export function useOnboardingStatus(): OnboardingStatus {
   const { userId, isReady: authReady } = useEffectiveUserId();
-  const { callRpc } = useRpcWithDevMode();
+  const { callRpc } = useRpc();
   const [needsOnboarding, setNeedsOnboarding] = useState<boolean | null>(null);
 
   useEffect(() => {

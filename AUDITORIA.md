@@ -28,6 +28,10 @@ ativa para o próprio agente.
 Correção: confirmar qual versão está em uso (buscar os imports), remover a
 pasta inteira em um commit próprio de limpeza.
 
+**Resolvido** — o modo dev inteiro (incluindo as duas cópias divergentes)
+foi retirado do projeto; a pasta `assets/{app,components,hooks,shared-patch}`
+não existe mais.
+
 ### 2. Nenhum gate automático para o mobile
 O CI roda apenas `pnpm --filter @amauc/api vitest run`. O app mobile — que é o
 produto — não tem typecheck nem teste rodando em CI, e tem apenas 2 arquivos de

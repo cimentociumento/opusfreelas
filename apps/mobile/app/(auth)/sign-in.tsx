@@ -5,74 +5,9 @@ import {
   useSignIn,
 } from "@clerk/clerk-expo";
 import { Redirect, useRouter } from "expo-router";
-<<<<<<< HEAD
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, ScrollView } from "react-native";
-=======
-import { useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useRpcWithDevMode } from "../../hooks/use-rpc-with-dev-mode";
-
-function formatE164(phone: string) {
-  let trimmed = phone.trim();
-
-  // Trata prefixo internacional 00 (ex: 001 para EUA)
-  if (trimmed.startsWith("00")) {
-    trimmed = "+" + trimmed.slice(2);
-  }
-
-  if (trimmed.startsWith("+")) {
-    let digits = trimmed.replace(/\D/g, "");
-    if (digits.startsWith("550")) {
-      digits = "55" + digits.slice(3);
-    }
-    return `+${digits}`;
-  }
-
-  let digits = trimmed.replace(/\D/g, "");
-  if (digits.length === 0) return "";
-
-  if (digits.startsWith("0")) {
-    digits = digits.replace(/^0+/, "");
-  }
-
-  if (!digits.startsWith("55")) {
-    digits = `55${digits}`;
-  }
-
-  const localPart = digits.slice(4);
-  if (localPart.length === 8 && /^[6-9]/.test(localPart)) {
-    const ddd = digits.slice(2, 4);
-    digits = `55${ddd}9${localPart}`;
-  }
-
-  return `+${digits}`;
-}
-
-function normalizeOtpCode(code: string) {
-  return code.replace(/\D/g, "").trim();
-}
-
-function isSignUpIfMissingTransferError(error: unknown) {
-  if (!isClerkAPIResponseError(error)) return false;
-  return error.errors.some((e) => e.code === "sign_up_if_missing_transfer");
-}
-
-function isVerificationCodeError(error: unknown) {
-  if (!isClerkAPIResponseError(error)) return false;
-  return error.errors.some((e) =>
-    ["form_code_incorrect", "verification_expired", "verification_failed", "form_param_format_invalid"].includes(e.code ?? ""),
-  );
-}
-
-function isSignInNotIdentifiedError(error: unknown) {
-  if (!isClerkAPIResponseError(error)) return false;
-  return error.errors.some((e) => {
-    const msg = `${e.message ?? ""} ${e.longMessage ?? ""}`.toLowerCase();
-    return e.code === "sign_in_attempt_not_identified" || msg.includes("not identified") || msg.includes("identify first");
-  });
-}
->>>>>>> origin/feat/nativewind-piloto
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useRpc } from "../../hooks/use-rpc";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message.trim()) return error.message;
@@ -96,18 +31,11 @@ export default function SignInScreen() {
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { setActive: activateSession } = useClerk();
   const { signIn, isLoaded: signInLoaded } = useSignIn();
-<<<<<<< HEAD
-=======
-  const { signUp, isLoaded: signUpLoaded } = useSignUp();
-  const { callRpc } = useRpcWithDevMode();
->>>>>>> origin/feat/nativewind-piloto
+  const { callRpc } = useRpc();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [sent, setSent] = useState(false);
-  const [pendingPhone, setPendingPhone] = useState<string | null>(null);
-  const [flowType, setFlowType] = useState<"signIn" | "signUp" | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -143,75 +71,10 @@ export default function SignInScreen() {
       return;
     }
 
-    if (signUp.missingFields?.includes("legal_accepted")) {
-      await signUp.update({ legalAccepted: true });
+    if (!password) {
+      setError("Informe sua senha.");
+      return;
     }
-
-    // if (signUp.status === "complete") {
-    //   await activateClerkSession(signUp.createdSessionId);
-    //   return;
-    // }
-
-    throw new Error(`Campos faltando: ${JSON.stringify(signUp.missingFields)}`);
-  }
-
-  async function sendCode() {
-    if (!loaded || !signIn || !signUp) return;
-
-    setLoading(true);
-    setError(null);
-    setCode("");
-
-    const phone = toBrazilE164(phoneInput);
-
-    try {
-      await signUp.create({
-        phoneNumber: phone,
-        legalAccepted: true, 
-      });
-      await signUp.preparePhoneNumberVerification({ strategy: "phone_code" })
-
-      if (signIn.status !== "needs_first_factor") {
-        throw new Error(`Nao foi possivel iniciar a verificacao (${signIn.status ?? "desconhecido"}).`);
-      }
-
-      const phoneFactor = getPhoneCodeFactor(signIn);
-      if (!phoneFactor || !("phoneNumberId" in phoneFactor) || !phoneFactor.phoneNumberId) {
-        throw new Error("Verificacao por SMS indisponivel para este numero.");
-      }
-
-      await signIn.prepareFirstFactor({
-        strategy: "phone_code",
-        phoneNumberId: phoneFactor.phoneNumberId,
-      });
-
-      setPendingPhone(phone);
-      setFlowType("signIn");
-      setSent(true);
-    } catch (sendError) {
-      if (
-        isClerkAPIResponseError(sendError) &&
-        sendError.errors.some((e) => e.code === "form_identifier_not_found")
-      ) {
-        try {
-          await signUp.create({ phoneNumber: phone });
-          await signUp.preparePhoneNumberVerification({ strategy: "phone_code" });
-          setPendingPhone(phone);
-          setFlowType("signUp");
-          setSent(true);
-        } catch (signUpError) {
-          setError(getErrorMessage(signUpError, "Nao foi possivel criar a conta."));
-        }
-      } else {
-        setError(getErrorMessage(sendError, "Nao foi possivel enviar o codigo."));
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function resendCode() {
-    if (!loaded || !pendingPhone) return;
 
     setLoading(true);
     setError(null);

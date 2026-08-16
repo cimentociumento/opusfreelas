@@ -453,10 +453,11 @@ describe("RPC Features (Demands & Discovery)", () => {
       expect(data.avatarUrl).toBeNull();
     });
 
-    it("updateProfile saves displayName", async () => {
+    it("updateProfile saves displayName and municipality", async () => {
       const updatedRow = {
         clerk_user_id: authState.userId,
         display_name: "João Pedro",
+        municipality: "Concórdia",
       };
 
       fromMock.mockImplementation(() => ({
@@ -475,13 +476,14 @@ describe("RPC Features (Demands & Discovery)", () => {
         },
         body: JSON.stringify({
           procedure: "identity.updateProfile",
-          input: { displayName: "João Pedro" },
+          input: { displayName: "João Pedro", municipality: "Concórdia" },
         }),
       });
 
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.displayName).toBe("João Pedro");
+      expect(data.municipality).toBe("Concórdia");
     });
 
     it("updateProfile rejects a name shorter than 2 characters", async () => {

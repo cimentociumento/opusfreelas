@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View, FlatList, Pressable, ActivityIndicator } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useRpc } from "../../../hooks/use-rpc";
 import { useLocation } from "../../../hooks/use-location";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { DemandResponse } from "@amauc/shared";
-import { Card, theme } from "../../../components";
+import { Card } from "../../../components/Card";
+import { theme } from "../../../components/theme";
 
 export default function AvailableDemandsScreen() {
   const router = useRouter();
-  const { callRpc } = useRpcWithDevMode();
+  const { callRpc } = useRpc();
   const { location, loading: locationLoading } = useLocation();
   const { isReady: isAuthReady } = useEffectiveUserId();
 
@@ -25,8 +26,7 @@ export default function AvailableDemandsScreen() {
       const data = await callRpc<DemandResponse[]>("demands.listVisible", {
         latitude: location.latitude,
         longitude: location.longitude,
-        municipality: location.municipality !== "Concórdia" ? location.municipality : undefined,
-      });
+        municipality: location.municipality !== "Concórdia" ? location.municipality : undefined });
       setDemands(data || []);
     } catch (error) {
       console.error("Failed to fetch available demands:", error);
@@ -85,8 +85,7 @@ export default function AvailableDemandsScreen() {
       <Stack.Screen
         options={{
           title: "Vagas na Região",
-          headerBackTitle: "Voltar",
-        }}
+          headerBackTitle: "Voltar" }}
       />
 
       <View style={styles.locationHeader}>
@@ -132,53 +131,43 @@ export default function AvailableDemandsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-  },
+    backgroundColor: theme.colors.background },
   locationHeader: {
     flexDirection: "row",
     alignItems: "center",
     padding: theme.spacing.md,
     backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
+    borderBottomColor: theme.colors.border },
   locationLabel: {
     ...theme.typography.body2,
     color: theme.colors.textSecondary,
-    marginRight: theme.spacing.sm,
-  },
+    marginRight: theme.spacing.sm },
   locationValue: {
     ...theme.typography.body2,
     color: theme.colors.primary,
-    fontWeight: "bold",
-  },
+    fontWeight: "bold" },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
-  },
+    alignItems: "center" },
   loadingText: {
     ...theme.typography.body2,
     color: theme.colors.textSecondary,
-    marginTop: theme.spacing.md,
-  },
+    marginTop: theme.spacing.md },
   listContent: {
-    padding: theme.spacing.md,
-  },
+    padding: theme.spacing.md },
   card: {
-    marginBottom: theme.spacing.md,
-  },
+    marginBottom: theme.spacing.md },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: theme.spacing.sm,
-  },
+    marginBottom: theme.spacing.sm },
   serviceType: {
     ...theme.typography.h3,
     color: theme.colors.text,
-    flex: 1,
-  },
+    flex: 1 },
   municipality: {
     ...theme.typography.caption,
     color: theme.colors.textSecondary,
@@ -186,27 +175,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: theme.borderRadius.full,
-    overflow: "hidden",
-  },
+    overflow: "hidden" },
   description: {
     ...theme.typography.body2,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.md,
-  },
+    marginBottom: theme.spacing.md },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-  },
+    alignItems: "center" },
   tagsRow: {
     flexDirection: "row",
-    gap: theme.spacing.sm,
-  },
+    gap: theme.spacing.sm },
   urgencyTag: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: theme.borderRadius.sm,
-  },
+    borderRadius: theme.borderRadius.sm },
   urgency_baixa: { backgroundColor: theme.colors.success + "20" },
   urgency_media: { backgroundColor: theme.colors.warning + "20" },
   urgency_alta: { backgroundColor: theme.colors.error + "20" },
@@ -214,32 +198,25 @@ const styles = StyleSheet.create({
   urgencyText: {
     ...theme.typography.caption,
     fontWeight: "bold",
-    color: theme.colors.text,
-  },
+    color: theme.colors.text },
   detailsButton: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.primaryLight,
-    borderRadius: theme.borderRadius.md,
-  },
+    borderRadius: theme.borderRadius.md },
   detailsButtonText: {
     ...theme.typography.body2,
     color: theme.colors.primary,
-    fontWeight: "bold",
-  },
+    fontWeight: "bold" },
   emptyContainer: {
     padding: theme.spacing.xl,
-    alignItems: "center",
-  },
+    alignItems: "center" },
   emptyText: {
     ...theme.typography.body1,
     color: theme.colors.text,
     textAlign: "center",
-    marginBottom: theme.spacing.sm,
-  },
+    marginBottom: theme.spacing.sm },
   emptySubText: {
     ...theme.typography.body2,
     color: theme.colors.textSecondary,
-    textAlign: "center",
-  },
-});
+    textAlign: "center" } });

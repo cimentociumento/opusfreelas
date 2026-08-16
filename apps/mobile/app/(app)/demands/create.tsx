@@ -4,10 +4,9 @@ import {
   Text,
   View,
   TextInput,
-  ScrollView,
-} from "react-native";
+  ScrollView } from "react-native";
 import { Stack, useRouter } from "expo-router";
-import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useRpc } from "../../../hooks/use-rpc";
 import { useLocation } from "../../../hooks/use-location";
 import {
   CreateDemandInput,
@@ -15,13 +14,15 @@ import {
   DemandUrgency,
   createDemandSchema,
   demandUrgencySchema,
-  serviceCategories,
-} from "@amauc/shared";
-import { Card, Button, theme, useToast } from "../../../components";
+  serviceCategories } from "@amauc/shared";
+import { Card } from "../../../components/Card";
+import { Button } from "../../../components/Button";
+import { useToast } from "../../../components/Toast";
+import { theme } from "../../../components/theme";
 
 export default function CreateDemandScreen() {
   const router = useRouter();
-  const { callRpc } = useRpcWithDevMode();
+  const { callRpc } = useRpc();
   const { showToast } = useToast();
   const { location, loading: locationLoading } = useLocation();
   const isSubmittingRef = useRef(false);
@@ -32,8 +33,7 @@ export default function CreateDemandScreen() {
     description: "",
     municipality: location.municipality,
     urgency: "media" as DemandUrgency,
-    visibilityRadius: 10,
-  });
+    visibilityRadius: 10 });
 
   // Update municipality in form when location loads
   useEffect(() => {
@@ -53,8 +53,7 @@ export default function CreateDemandScreen() {
     const parsed = createDemandSchema.safeParse({
         ...form,
         latitude: location.latitude,
-        longitude: location.longitude,
-    });
+        longitude: location.longitude });
     
     if (!parsed.success) {
       const firstIssue = parsed.error.issues[0];
@@ -188,70 +187,54 @@ export default function CreateDemandScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-  },
+    backgroundColor: theme.colors.background },
   header: {
     padding: theme.spacing.lg,
-    backgroundColor: theme.colors.primary,
-  },
+    backgroundColor: theme.colors.primary },
   title: {
     ...theme.typography.h2,
     color: "#fff",
-    marginBottom: theme.spacing.sm,
-  },
+    marginBottom: theme.spacing.sm },
   subtitle: {
     ...theme.typography.body1,
-    color: "rgba(255, 255, 255, 0.9)",
-  },
+    color: "rgba(255, 255, 255, 0.9)" },
   form: {
     padding: theme.spacing.lg,
-    gap: theme.spacing.lg,
-  },
+    gap: theme.spacing.lg },
   formCard: {
     padding: theme.spacing.lg,
-    gap: theme.spacing.md,
-  },
+    gap: theme.spacing.md },
   label: {
     ...theme.typography.body2,
     color: theme.colors.text,
     fontWeight: "700",
-    marginBottom: theme.spacing.sm,
-  },
+    marginBottom: theme.spacing.sm },
   input: {
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
-    ...theme.typography.body1,
-  },
+    ...theme.typography.body1 },
   textArea: {
     height: 100,
-    textAlignVertical: "top",
-  },
+    textAlignVertical: "top" },
   helperText: {
     ...theme.typography.caption,
     color: theme.colors.textSecondary,
     marginTop: -theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-  },
+    marginBottom: theme.spacing.sm },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: theme.spacing.sm,
-  },
+    gap: theme.spacing.sm },
   urgencyChip: {
     flex: 1,
-    minWidth: 80,
-  },
+    minWidth: 80 },
   categoryChip: {
-    marginBottom: theme.spacing.sm,
-  },
+    marginBottom: theme.spacing.sm },
   radiusChip: {
     flex: 1,
-    minWidth: 60,
-  },
+    minWidth: 60 },
   actionArea: {
-    marginTop: theme.spacing.lg,
-  },
-});
+    marginTop: theme.spacing.lg } });

@@ -1,15 +1,14 @@
+
 import { StyleSheet, Text, View, ScrollView, Dimensions, Pressable } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { serviceCategories } from "@amauc/shared";
-import { Card, Button, theme } from "../../../components";
-import { useDevelopmentMode } from "../../../hooks/use-development-mode";
+import { Card } from "../../../components/Card";
+import { Button } from "../../../components/Button";
+import { theme } from "../../../components/theme";
 
 export default function DiscoveryScreen() {
   const router = useRouter();
   const screenWidth = Dimensions.get('window').width;
-  const { isDevMode } = useDevelopmentMode();
-
-  console.log(`🛠️ DiscoveryScreen: isDevMode = ${isDevMode}`);
 
   const handleCategorySelect = (category: string) => {
     router.push({
@@ -27,8 +26,7 @@ export default function DiscoveryScreen() {
       "Pedreiro / Servente": "🧱",
       "Pintura": "🎨",
       "Eletricista / Encanador": "⚡",
-      "Cuidado com Animais": "🐕",
-    };
+      "Cuidado com Animais": "🐕" };
     return icons[category] || "📋";
   };
 
@@ -76,35 +74,29 @@ export default function DiscoveryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-  },
+    backgroundColor: theme.colors.background },
   header: {
     padding: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
+    borderBottomColor: theme.colors.border },
   title: {
     ...theme.typography.h2,
     color: theme.colors.primary,
-    marginBottom: theme.spacing.sm,
-  },
+    marginBottom: theme.spacing.sm },
   subtitle: {
     ...theme.typography.body1,
-    color: theme.colors.textSecondary,
-  },
+    color: theme.colors.textSecondary },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     padding: theme.spacing.md,
-    gap: theme.spacing.md,
-  },
+    gap: theme.spacing.md },
   categoryCard: {
     width: "47%",
     alignItems: "center",
     padding: theme.spacing.lg,
-    minHeight: 140,
-  },
+    minHeight: 140 },
   iconContainer: {
     width: 60,
     height: 60,
@@ -112,28 +104,21 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: theme.spacing.md,
-  },
+    marginBottom: theme.spacing.md },
   iconText: {
-    fontSize: 28,
-  },
+    fontSize: 28 },
   categoryText: {
     ...theme.typography.body2,
     color: theme.colors.text,
     fontWeight: "700",
     textAlign: "center",
-    marginBottom: theme.spacing.xs,
-  },
+    marginBottom: theme.spacing.xs },
   categorySubtext: {
     ...theme.typography.caption,
     color: theme.colors.textSecondary,
-    textAlign: "center",
-  },
+    textAlign: "center" },
   footer: {
     padding: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-  },
+    marginBottom: theme.spacing.xl },
   allCard: {
-    padding: theme.spacing.lg,
-  },
-});
+    padding: theme.spacing.lg } });

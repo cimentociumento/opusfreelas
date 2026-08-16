@@ -5,19 +5,19 @@ import {
   View,
   ScrollView,
   ActivityIndicator,
-  TextInput,
-} from "react-native";
+  TextInput } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   DemandResponse,
   demandUrgencySchema,
   updateDemandRpcSchema,
-  type DemandUrgency,
-} from "@amauc/shared";
-import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+  type DemandUrgency } from "@amauc/shared";
+import { useRpc } from "../../../hooks/use-rpc";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { isDemandOwner } from "../../../lib/auth-constants";
-import { Button, theme, useToast } from "../../../components";
+import { Button } from "../../../components/Button";
+import { useToast } from "../../../components/Toast";
+import { theme } from "../../../components/theme";
 
 function paramToString(value: string | string[] | undefined): string | undefined {
   if (value == null) return undefined;
@@ -42,15 +42,14 @@ function toEditForm(demand: DemandResponse): EditForm {
     urgency: demand.urgency,
     visibilityRadius: demand.visibilityRadius,
     latitude: demand.latitude,
-    longitude: demand.longitude,
-  };
+    longitude: demand.longitude };
 }
 
 export default function DemandDetailsScreen() {
   const { id: idParam } = useLocalSearchParams<{ id?: string | string[] }>();
   const id = paramToString(idParam);
   const router = useRouter();
-  const { callRpc } = useRpcWithDevMode();
+  const { callRpc } = useRpc();
   const { userId: currentUserId, isReady: isAuthReady } = useEffectiveUserId();
   const { showToast } = useToast();
 
@@ -134,8 +133,7 @@ export default function DemandDetailsScreen() {
     try {
       const updated = await callRpc<DemandResponse>("demands.update", {
         id,
-        ...editForm,
-      });
+        ...editForm });
       setDemand(updated);
       setIsEditing(false);
       showToast("Demanda atualizada com sucesso", "success");
@@ -336,31 +334,26 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-  },
+    backgroundColor: theme.colors.background },
   center: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
-  },
+    alignItems: "center" },
   card: {
     backgroundColor: theme.colors.surface,
     margin: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
-    ...theme.shadows.md,
-  },
+    ...theme.shadows.md },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
-  },
+    marginBottom: theme.spacing.md },
   statusBadge: {
     paddingVertical: 4,
     paddingHorizontal: 10,
-    borderRadius: theme.borderRadius.sm,
-  },
+    borderRadius: theme.borderRadius.sm },
   status_aberta: { backgroundColor: theme.colors.primaryLight },
   status_em_contato: { backgroundColor: theme.colors.secondaryLight },
   status_concluida: { backgroundColor: theme.colors.successLight || "#e6fffa" },
@@ -369,23 +362,19 @@ const styles = StyleSheet.create({
   statusText: {
     ...theme.typography.caption,
     fontWeight: "700",
-    textTransform: "uppercase",
-  },
+    textTransform: "uppercase" },
   date: {
     ...theme.typography.caption,
-    color: theme.colors.textLight,
-  },
+    color: theme.colors.textLight },
   title: {
     ...theme.typography.h2,
     color: theme.colors.primary,
-    marginBottom: theme.spacing.sm,
-  },
+    marginBottom: theme.spacing.sm },
   description: {
     ...theme.typography.body1,
     color: theme.colors.textSecondary,
     lineHeight: 24,
-    marginBottom: theme.spacing.lg,
-  },
+    marginBottom: theme.spacing.lg },
   infoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -393,68 +382,54 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: theme.colors.border,
     paddingVertical: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-  },
+    marginBottom: theme.spacing.lg },
   infoItem: {
     width: "50%",
-    marginBottom: theme.spacing.sm,
-  },
+    marginBottom: theme.spacing.sm },
   infoLabel: {
     ...theme.typography.caption,
     color: theme.colors.textLight,
-    marginBottom: 2,
-  },
+    marginBottom: 2 },
   infoValue: {
     ...theme.typography.body2,
     fontWeight: "600",
     color: theme.colors.text,
-    textTransform: "capitalize",
-  },
+    textTransform: "capitalize" },
   label: {
     ...theme.typography.body2,
     color: theme.colors.text,
-    fontWeight: "700",
-  },
+    fontWeight: "700" },
   input: {
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
-    ...theme.typography.body1,
-  },
+    ...theme.typography.body1 },
   actions: {
     flexDirection: "row",
     gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-  },
+    marginBottom: theme.spacing.md },
   actionFlex: {
-    flex: 1,
-  },
+    flex: 1 },
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: theme.spacing.sm,
-  },
+    gap: theme.spacing.sm },
   urgencyChip: {
     flex: 1,
-    minWidth: 80,
-  },
+    minWidth: 80 },
   radiusChip: {
     flex: 1,
-    minWidth: 60,
-  },
+    minWidth: 60 },
   ownerPanel: {
     marginTop: theme.spacing.md,
     paddingTop: theme.spacing.md,
     borderTopWidth: 1,
-    borderColor: theme.colors.border,
-  },
+    borderColor: theme.colors.border },
   panelTitle: {
     ...theme.typography.caption,
     color: theme.colors.textLight,
     marginBottom: theme.spacing.md,
     textTransform: "uppercase",
-    fontWeight: "700",
-  },
-});
+    fontWeight: "700" } });

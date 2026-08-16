@@ -10,11 +10,8 @@ import {
   profileRoleFlagsSchema,
   updateProviderProfileSchema,
   updateIdentityProfileSchema,
-<<<<<<< HEAD
   updateProviderSocialProfileSchema,
   uploadPortfolioImageSchema,
-=======
->>>>>>> origin/feat/nativewind-piloto
 } from "@amauc/shared";
 
 const providerOnlyInputSchema = z.object({
@@ -32,38 +29,10 @@ export const identityHandlers = {
       displayName: profile.display_name ?? null,
       avatarUrl: profile.avatar_url ?? null,
       serviceCategories: profile.service_categories ?? [],
-      displayName: profile.display_name ?? null,
-      avatarUrl: profile.avatar_url ?? null,
       municipality: profile.municipality ?? null,
       bio: profile.bio ?? null,
       yearsExperience: profile.years_experience ?? null,
       portfolioUrls: profile.portfolio_urls ?? [],
-    });
-  },
-  "identity.updateProfile": async (c: Context, input: unknown) => {
-    const auth = getAuthUser(c);
-    const parsed = updateIdentityProfileSchema.safeParse(input);
-    if (!parsed.success) {
-      return c.json({ error: "Invalid input", details: parsed.error.flatten() }, 400);
-    }
-
-    const supabase = getSupabaseAdmin();
-    const { data, error } = await supabase
-      .from("profiles")
-      .upsert(
-        { clerk_user_id: auth.userId, display_name: parsed.data.displayName, updated_at: new Date().toISOString() },
-        { onConflict: "clerk_user_id" },
-      )
-      .select("clerk_user_id, display_name")
-      .single();
-
-    if (error) {
-      return c.json({ error: "Database error", details: error.message }, 500);
-    }
-
-    return c.json({
-      clerkUserId: data.clerk_user_id,
-      displayName: data.display_name,
     });
   },
 

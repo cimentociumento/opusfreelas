@@ -9,7 +9,6 @@ export type ProfileRoleFlagsInput = z.infer<typeof profileRoleFlagsSchema>;
 
 export const updateIdentityProfileSchema = z.object({
   displayName: z.string().trim().min(2).max(80),
-<<<<<<< HEAD
   municipality: z.string().trim().min(2).max(80),
 });
 
@@ -31,8 +30,3 @@ export const uploadPortfolioImageSchema = z.object({
 });
 
 export type UploadPortfolioImageInput = z.infer<typeof uploadPortfolioImageSchema>;
-=======
-});
-
-export type UpdateIdentityProfileInput = z.infer<typeof updateIdentityProfileSchema>;
->>>>>>> origin/feat/nativewind-piloto

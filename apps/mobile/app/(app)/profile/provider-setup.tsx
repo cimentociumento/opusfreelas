@@ -10,16 +10,17 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
-import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useRpc } from "../../../hooks/use-rpc";
 import { useLocation } from "../../../hooks/use-location";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { serviceCategories, ServiceCategory } from "@amauc/shared";
-import { theme, useToast } from "../../../components";
+import { useToast } from "../../../components/Toast";
+import { theme } from "../../../components/theme";
 import { resolvePortfolioContentType, isProviderSocialProfileComplete } from "../../../lib/portfolio";
 
 export default function ProviderSetupScreen() {
   const router = useRouter();
-  const { callRpc } = useRpcWithDevMode();
+  const { callRpc } = useRpc();
   const { isReady: isAuthReady } = useEffectiveUserId();
   const { showToast } = useToast();
   const isSavingRef = useRef(false);
@@ -100,8 +101,7 @@ export default function ProviderSetupScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.6,
-      base64: true,
-    });
+      base64: true });
     if (result.canceled || !result.assets?.[0]?.base64) return;
 
     const asset = result.assets[0];
@@ -113,8 +113,7 @@ export default function ProviderSetupScreen() {
       await ensureProviderRole();
       const { path } = await callRpc<{ path: string }>("identity.uploadPortfolioImage", {
         imageBase64: asset.base64,
-        contentType: resolvePortfolioContentType(asset.mimeType),
-      });
+        contentType: resolvePortfolioContentType(asset.mimeType) });
       setPortfolioPaths((prev) => [...prev, path]);
     } catch (error: any) {
       // Rede rural intermitente: não trava o formulário; o gate de visibilidade
@@ -144,14 +143,12 @@ export default function ProviderSetupScreen() {
     try {
       await callRpc("identity.updateRoles", {
         isContractor: true,
-        isProvider: true,
-      });
+        isProvider: true });
 
       await callRpc("identity.updateProviderProfile", {
         latitude: location.latitude,
         longitude: location.longitude,
-        serviceCategories: selectedCategories,
-      });
+        serviceCategories: selectedCategories });
 
       const trimmedCity = municipality.trim();
       if (trimmedCity && displayName.trim()) {
@@ -159,23 +156,20 @@ export default function ProviderSetupScreen() {
         // reidrated displayName so we don't blank it out.
         await callRpc("identity.updateProfile", {
           displayName: displayName.trim(),
-          municipality: trimmedCity,
-        });
+          municipality: trimmedCity });
       }
 
       const years = Number(yearsExperience);
       const isComplete = isProviderSocialProfileComplete({
         bio,
         yearsExperience: Number.isFinite(years) ? years : null,
-        photoCount: portfolioPaths.length,
-      });
+        photoCount: portfolioPaths.length });
 
       if (isComplete) {
         await callRpc("identity.updateProviderSocialProfile", {
           bio: bio.trim(),
           yearsExperience: Math.max(0, Math.min(60, Math.trunc(years))),
-          portfolioUrls: portfolioPaths,
-        });
+          portfolioUrls: portfolioPaths });
       }
 
       // Only claim search visibility when the completeness gate actually
@@ -305,49 +299,40 @@ export default function ProviderSetupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-  },
+    backgroundColor: "#fff" },
   section: {
     padding: 24,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
+    borderBottomColor: "#f0f0f0" },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "800",
     color: "#333",
-    marginBottom: 4,
-  },
+    marginBottom: 4 },
   sectionSubtitle: {
     fontSize: 14,
     color: "#666",
-    marginBottom: 20,
-  },
+    marginBottom: 20 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-  },
+    gap: 10 },
   chip: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#ddd",
-    backgroundColor: "#fff",
-  },
+    backgroundColor: "#fff" },
   chipSelected: {
     backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
+    borderColor: theme.colors.primary },
   chipText: {
     fontSize: 14,
     color: "#444",
-    fontWeight: "600",
-  },
+    fontWeight: "600" },
   chipTextSelected: {
-    color: "#fff",
-  },
+    color: "#fff" },
   input: {
     backgroundColor: "#f9f9f9",
     padding: 16,
@@ -355,12 +340,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#eee",
     fontSize: 16,
-    color: "#333",
-  },
+    color: "#333" },
   textArea: {
     minHeight: 100,
-    textAlignVertical: "top",
-  },
+    textAlignVertical: "top" },
   photoThumb: {
     width: 72,
     height: 72,
@@ -369,42 +352,33 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#f0f0f0",
     borderWidth: 1,
-    borderColor: "#eee",
-  },
+    borderColor: "#eee" },
   photoThumbText: {
     fontSize: 12,
     color: "#999",
-    fontWeight: "600",
-  },
+    fontWeight: "600" },
   addPhotoBtn: {
     marginTop: 16,
     borderWidth: 1,
     borderColor: theme.colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
-    alignItems: "center",
-  },
+    alignItems: "center" },
   addPhotoBtnDisabled: {
-    opacity: 0.6,
-  },
+    opacity: 0.6 },
   addPhotoBtnText: {
     color: theme.colors.primary,
     fontSize: 15,
-    fontWeight: "700",
-  },
+    fontWeight: "700" },
   footer: {
     padding: 24,
-    marginBottom: 40,
-  },
+    marginBottom: 40 },
   saveBtn: {
     backgroundColor: theme.colors.primary,
     padding: 18,
     borderRadius: 12,
-    alignItems: "center",
-  },
+    alignItems: "center" },
   saveBtnText: {
     color: "#fff",
     fontSize: 16,
-    fontWeight: "800",
-  },
-});
+    fontWeight: "800" } });

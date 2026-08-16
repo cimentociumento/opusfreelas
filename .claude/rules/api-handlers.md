@@ -12,8 +12,8 @@ Todo handler que lê ou escreve recurso de usuário valida ownership
 falha e 404 quando o recurso não existe. A API é a primeira linha; RLS no
 Supabase é a última — as duas são obrigatórias, nunca uma só.
 
-Nunca remover a checagem que bloqueia `DEV_BYPASS_TOKEN` quando
-`NODE_ENV=production`, sob nenhuma justificativa de teste.
+Nunca reintroduzir um bypass de autenticação para dev (token mágico, flag de
+ambiente, etc.) em `requireClerkAuth`, sob nenhuma justificativa de teste.
 
 Nunca inventar nome de tabela, coluna ou endpoint. Se não tem certeza do schema,
 leia a migration em `supabase/migrations/` antes de escrever a query.

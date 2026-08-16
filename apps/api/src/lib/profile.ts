@@ -10,8 +10,6 @@ export type ProfileRow = {
   display_name?: string | null;
   avatar_url?: string | null;
   service_categories?: string[];
-  display_name?: string | null;
-  avatar_url?: string | null;
   municipality?: string | null;
   bio?: string | null;
   years_experience?: number | null;
@@ -22,13 +20,9 @@ export async function getProfileByClerkUserId(userId: string): Promise<ProfileRo
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from("profiles")
-<<<<<<< HEAD
     .select(
       "clerk_user_id, is_contractor, is_provider, service_categories, display_name, avatar_url, municipality, bio, years_experience, portfolio_urls"
     )
-=======
-    .select("clerk_user_id, is_contractor, is_provider, display_name, avatar_url, service_categories")
->>>>>>> origin/feat/nativewind-piloto
     .eq("clerk_user_id", userId)
     .maybeSingle<ProfileRow>();
 
@@ -44,8 +38,6 @@ export async function getProfileByClerkUserId(userId: string): Promise<ProfileRo
       display_name: null,
       avatar_url: null,
       service_categories: [],
-      display_name: null,
-      avatar_url: null,
       municipality: null,
       bio: null,
       years_experience: null,

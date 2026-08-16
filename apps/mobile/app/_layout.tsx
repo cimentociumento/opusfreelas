@@ -1,8 +1,4 @@
 import "../global.css";
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/feat/nativewind-piloto
 import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { Stack, Redirect } from "expo-router";
 import { Text, View } from "react-native";

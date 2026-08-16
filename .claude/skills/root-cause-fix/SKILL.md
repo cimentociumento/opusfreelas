@@ -23,8 +23,8 @@ corrija a partir de descrição vaga.
 ## 3. Isolar a causa raiz
 Pergunte "por quê?" pelo menos duas vezes. Verifique nesta ordem:
 
-1. **Ambiente** — cache pnpm/expo corrompido, env ausente, rede institucional,
-   `DEV_BYPASS_TOKEN` mal configurado. Primeira hipótese em erro intermitente.
+1. **Ambiente** — cache pnpm/expo corrompido, env ausente, rede institucional.
+   Primeira hipótese em erro intermitente.
 2. **Contrato** — schema Zod em `@amauc/shared` desalinhado entre api e mobile.
    Causa muito comum aqui. Compare os dois consumidores.
 3. **Implementação** — só então investigue a lógica do handler ou componente.

@@ -1,11 +1,14 @@
+
 import { useEffect, useState, useCallback } from "react";
 import { StyleSheet, Text, View, FlatList, ActivityIndicator } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useRpcWithDevMode } from "../../../hooks/use-rpc-with-dev-mode";
+import { useRpc } from "../../../hooks/use-rpc";
 import { useLocation } from "../../../hooks/use-location";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { ProviderResult } from "@amauc/shared";
-import { Card, Button, theme } from "../../../components";
+import { Card } from "../../../components/Card";
+import { Button } from "../../../components/Button";
+import { theme } from "../../../components/theme";
 
 function paramToString(value: string | string[] | undefined): string | undefined {
   if (value == null) return undefined;
@@ -16,7 +19,7 @@ export default function DiscoveryResultsScreen() {
   const params = useLocalSearchParams<{ category?: string | string[] }>();
   const category = paramToString(params.category);
   const router = useRouter();
-  const { callRpc, isDevMode } = useRpcWithDevMode();
+  const { callRpc } = useRpc();
   const { isReady: isAuthReady } = useEffectiveUserId();
 
   const [results, setResults] = useState<ProviderResult[]>([]);
@@ -33,8 +36,7 @@ export default function DiscoveryResultsScreen() {
         latitude: location.latitude,
         longitude: location.longitude,
         category: category ? category : undefined,
-        radius: 50,
-      });
+        radius: 50 });
 
       setResults(data || []);
     } catch (error) {
@@ -85,8 +87,7 @@ export default function DiscoveryResultsScreen() {
           onPress={() =>
             router.push({
               pathname: "/profile/provider-setup",
-              params: { previewUserId: item.clerkUserId },
-            })
+              params: { previewUserId: item.clerkUserId } })
           }
         />
         <Button 
@@ -147,31 +148,25 @@ export default function DiscoveryResultsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-  },
+    backgroundColor: theme.colors.background },
   list: {
     padding: theme.spacing.md,
-    gap: theme.spacing.md,
-  },
+    gap: theme.spacing.md },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: theme.spacing.md,
-  },
+    gap: theme.spacing.md },
   loadingText: {
     ...theme.typography.body1,
     color: theme.colors.textSecondary,
-    marginTop: theme.spacing.md,
-  },
+    marginTop: theme.spacing.md },
   card: {
-    marginBottom: theme.spacing.md,
-  },
+    marginBottom: theme.spacing.md },
   cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: theme.spacing.md,
-  },
+    marginBottom: theme.spacing.md },
   avatar: {
     width: 60,
     height: 60,
@@ -179,67 +174,52 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primaryLight,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: theme.spacing.md,
-  },
+    marginRight: theme.spacing.md },
   avatarText: {
-    fontSize: 24,
-  },
+    fontSize: 24 },
   cardInfo: {
-    flex: 1,
-  },
+    flex: 1 },
   providerName: {
     ...theme.typography.h3,
     color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
-  },
+    marginBottom: theme.spacing.xs },
   distance: {
     ...theme.typography.body2,
     color: theme.colors.primary,
     fontWeight: "700",
-    marginBottom: theme.spacing.xs,
-  },
+    marginBottom: theme.spacing.xs },
   availability: {
     ...theme.typography.caption,
-    color: theme.colors.success,
-  },
+    color: theme.colors.success },
   categories: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-  },
+    marginBottom: theme.spacing.md },
   categoryBadge: {
     backgroundColor: theme.colors.primaryLight,
     paddingVertical: theme.spacing.xs,
     paddingHorizontal: theme.spacing.sm,
-    borderRadius: theme.borderRadius.sm,
-  },
+    borderRadius: theme.borderRadius.sm },
   categoryText: {
     ...theme.typography.caption,
     color: theme.colors.primary,
-    fontWeight: "700",
-  },
+    fontWeight: "700" },
   actions: {
     flexDirection: "row",
-    gap: theme.spacing.sm,
-  },
+    gap: theme.spacing.sm },
   actionBtn: {
-    flex: 1,
-  },
+    flex: 1 },
   empty: {
     padding: theme.spacing.xl,
     alignItems: "center",
-    gap: theme.spacing.md,
-  },
+    gap: theme.spacing.md },
   emptyTitle: {
     ...theme.typography.h3,
     color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-  },
+    marginBottom: theme.spacing.sm },
   emptySubtitle: {
     ...theme.typography.body1,
     color: theme.colors.textSecondary,
     textAlign: "center",
-    marginBottom: theme.spacing.lg,
-  },
-});
+    marginBottom: theme.spacing.lg } });

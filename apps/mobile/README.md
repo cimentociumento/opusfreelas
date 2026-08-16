@@ -48,16 +48,3 @@ cd apps/mobile
 npx expo start --clear
 ```
 
----
-
-## Sobre o erro `readDevModeFlag is not a function`
-
-Se esse erro ainda aparecer depois deste fix, o problema está no
-`packages/shared/src/`. Rode na raiz do monorepo:
-
-```bash
-grep -r "readDevModeFlag" packages/ --include="*.ts" --include="*.tsx" -n
-```
-
-E nos arquivos encontrados, troque qualquer uso de `SecureStore` por
-`AsyncStorage`, tornando a função assíncrona.

@@ -1,55 +1,58 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
-import { Stack, useRouter } from "expo-router";
-import { StyleSheet, Text, View, ScrollView } from "react-native";
-import { Button, Card, DevModeToggle, DevAuthWrapper, theme } from "../components";
+import { useRouter, useNavigation } from "expo-router";
+import { useEffect } from "react";
+import { ActivityIndicator, StyleSheet, Text, View, ScrollView } from "react-native";
+import { Button } from "../components/Button";
+import { Card } from "../components/Card";
+import { theme } from "../components/theme";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
+
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-      <View testID="nativewind-gate1-probe" className="bg-red-500 h-10" />
       <ScrollView style={styles.container}>
         <View style={styles.hero}>
           <Text style={styles.title}>Opus Freelas</Text>
           <Text style={styles.tagline}>Conectando profissionais locais à quem precisa</Text>
         </View>
 
-        <DevAuthWrapper
-          signedOutComponent={
-            <View style={styles.authSection}>
-              <Card style={styles.authCard}>
-                <Text style={styles.authTitle}>Bem-vindo ao Opus Freelas</Text>
-                <Text style={styles.authSubtitle}>
-                  Encontre os melhores profissionais para serviços manuais e rurais na região da AMAUC
-                </Text>
-                <Button
-                  title="Entrar"
-                  variant="primary"
-                  size="lg"
-                  style={styles.actionButton}
-                  onPress={() => router.push("/sign-in")}
-                />
-                <Button
-                  title="Cadastrar-se"
-                  variant="secondary"
-                  size="lg"
-                  style={styles.actionButton}
-                  onPress={() => router.push("/sign-up")}
-                />
-              </Card>
-            </View>
-          }
-          signedInComponent={<SignedInContent />}
-        />
-
-        {/* Development Mode Toggle */}
-        <View style={styles.devToggleContainer}>
-          <DevModeToggle />
-        </View>
+        {!isAuthLoaded ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          </View>
+        ) : isSignedIn ? (
+          <SignedInContent />
+        ) : (
+          <View style={styles.authSection}>
+            <Card style={styles.authCard}>
+              <Text style={styles.authTitle}>Bem-vindo ao Opus Freelas</Text>
+              <Text style={styles.authSubtitle}>
+                Encontre os melhores profissionais para serviços manuais e rurais na região da AMAUC
+              </Text>
+              <Button
+                title="Entrar"
+                variant="primary"
+                size="lg"
+                style={styles.actionButton}
+                onPress={() => router.push("/sign-in")}
+              />
+              <Button
+                title="Cadastrar-se"
+                variant="secondary"
+                size="lg"
+                style={styles.actionButton}
+                onPress={() => router.push("/sign-up")}
+              />
+            </Card>
+          </View>
+        )}
       </ScrollView>
-    </>
   );
 }
 
@@ -208,10 +211,8 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xl,
     alignItems: "center",
   },
-  devToggleContainer: {
-    position: "absolute",
-    top: theme.spacing.lg,
-    right: theme.spacing.md,
-    zIndex: 1000,
+  loadingContainer: {
+    padding: theme.spacing.md,
+    alignItems: "center",
   },
 });
