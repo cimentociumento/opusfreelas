@@ -36,6 +36,12 @@ export const deleteDemandSchema = z.object({
 
 export type DeleteDemandInput = z.infer<typeof deleteDemandSchema>;
 
+export const getDemandByIdSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export type GetDemandByIdInput = z.infer<typeof getDemandByIdSchema>;
+
 export const demandResponseSchema = z.object({
   id: z.string().uuid(),
   contractorId: z.string(),
@@ -49,6 +55,9 @@ export const demandResponseSchema = z.object({
   status: demandStatusSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
+  // Só preenchidos por demands.getById, para o card de contato do prestador.
+  contractorName: z.string().nullable().optional(),
+  contractorPhone: z.string().nullable().optional(),
 });
 
 export type DemandResponse = z.infer<typeof demandResponseSchema>;

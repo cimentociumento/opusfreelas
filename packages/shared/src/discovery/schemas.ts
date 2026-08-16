@@ -26,7 +26,17 @@ export type ProviderSearchInput = z.infer<typeof providerSearchSchema>;
 export const providerResultSchema = z.object({
   clerkUserId: z.string(),
   isProvider: z.boolean(),
+  displayName: z.string().nullable(),
+  avatarUrl: z.string().nullable().optional(),
+  municipality: z.string().nullable().optional(),
+  bio: z.string().nullable().optional(),
+  yearsExperience: z.number().nullable().optional(),
+  portfolioUrls: z.array(z.string()).default([]),
   serviceCategories: z.array(serviceCategorySchema),
+  phone: z.string().nullable().optional(),
+  completedServicesCount: z.number().default(0),
+  ratingAverage: z.number().default(5.0),
+  ratingCount: z.number().default(0),
   distanceMeters: z.number(),
 });
 
