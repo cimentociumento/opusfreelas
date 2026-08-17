@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, View } from "react-native";
+import { ActivityIndicator, FlatList, ScrollView, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useRpc } from "../../../hooks/use-rpc";
 import { useLocation } from "../../../hooks/use-location";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
-import { DemandResponse } from "@amauc/shared";
+import { DemandResponse, demandServiceTypeOptions } from "@amauc/shared";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
 import { Text } from "../../../components/ui/text";
@@ -41,6 +41,7 @@ export default function AvailableDemandsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | undefined>(undefined);
 
   const fetchDemands = async () => {
     if (!location) return;
@@ -52,6 +53,7 @@ export default function AvailableDemandsScreen() {
         latitude: location.latitude,
         longitude: location.longitude,
         municipality: location.municipality !== "Concórdia" ? location.municipality : undefined,
+        category,
       });
       setDemands(data || []);
     } catch (err) {
@@ -68,7 +70,7 @@ export default function AvailableDemandsScreen() {
     if (!locationLoading && isAuthReady) {
       void fetchDemands();
     }
-  }, [locationLoading, location, isAuthReady]);
+  }, [locationLoading, location, isAuthReady, category]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -118,15 +120,39 @@ export default function AvailableDemandsScreen() {
         }}
       />
 
-      <View className="flex-row items-center border-b border-border bg-card p-4">
-        <Text className="mr-2 text-sm text-muted-foreground">Buscando em:</Text>
-        {locationLoading ? (
-          <ActivityIndicator size="small" color={theme.colors.primary} />
-        ) : (
-          <Text className="text-sm font-bold text-primary">
-            {location.municipality} e raio próximo
-          </Text>
-        )}
+      <View className="gap-3 border-b border-border bg-card p-4">
+        <View className="flex-row items-center">
+          <Text className="mr-2 text-sm text-muted-foreground">Buscando em:</Text>
+          {locationLoading ? (
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          ) : (
+            <Text className="text-sm font-bold text-primary">
+              {location.municipality} e raio próximo
+            </Text>
+          )}
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View className="flex-row gap-2">
+            <Button
+              size="sm"
+              variant={category === undefined ? "default" : "outline"}
+              onPress={() => setCategory(undefined)}
+            >
+              <Text>Todas</Text>
+            </Button>
+            {demandServiceTypeOptions.map((cat) => (
+              <Button
+                key={cat}
+                size="sm"
+                variant={category === cat ? "default" : "outline"}
+                onPress={() => setCategory(cat)}
+              >
+                <Text>{cat}</Text>
+              </Button>
+            ))}
+          </View>
+        </ScrollView>
       </View>
 
       {loading && !refreshing ? (
@@ -153,11 +179,20 @@ export default function AvailableDemandsScreen() {
           onRefresh={onRefresh}
           refreshing={refreshing}
           ListEmptyComponent={
-            <Card className="items-center gap-2 p-8">
-              <Text className="text-center">Nenhuma vaga encontrada na sua região no momento.</Text>
-              <Text className="text-center text-muted-foreground">
-                Volte mais tarde ou tente mudar a localização.
+            <Card className="items-center gap-3 p-8">
+              <Text className="text-center">
+                {category
+                  ? `Nenhuma vaga de ${category} na sua região no momento.`
+                  : "Nenhuma vaga encontrada na sua região no momento."}
               </Text>
+              <Text className="text-center text-muted-foreground">
+                Volte mais tarde, tente mudar a localização{category ? " ou remova o filtro" : ""}.
+              </Text>
+              {category ? (
+                <Button variant="outline" onPress={() => setCategory(undefined)}>
+                  <Text>Ver todas as categorias</Text>
+                </Button>
+              ) : null}
             </Card>
           }
         />

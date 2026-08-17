@@ -1,12 +1,14 @@
-import { z } from "zod";
 import {
   createDemandSchema,
   updateDemandRpcSchema,
   deleteDemandSchema,
+  getDemandByIdSchema,
+  listVisibleDemandsSchema,
 } from "@amauc/shared";
 import type { Context } from "hono";
 import { getAuthUser } from "../middleware/clerk.js";
 import { getSupabaseAdmin } from "../lib/supabase.js";
+import { getContactWithClerkFallback } from "../lib/profile.js";
 import { mapDemandRow } from "../lib/demands-mapper.js";
 
 async function getOwnedDemand(supabase: ReturnType<typeof getSupabaseAdmin>, id: string, userId: string) {
@@ -98,7 +100,7 @@ export const demandHandlers = {
       return c.json({ error: "Database error", details: error.message }, 500);
     }
 
-    return c.json(data.map(mapDemandRow));
+    return c.json(data.map((row: Parameters<typeof mapDemandRow>[0]) => mapDemandRow(row)));
   },
 
   "demands.update": async (c: Context, input: unknown) => {
@@ -193,24 +195,21 @@ export const demandHandlers = {
   },
 
   "demands.listVisible": async (c: Context, input: unknown) => {
-    const schema = z.object({
-      latitude: z.number(),
-      longitude: z.number(),
-      municipality: z.string().optional()
-    });
-
-    const parsed = schema.safeParse(input);
+    const auth = getAuthUser(c);
+    const parsed = listVisibleDemandsSchema.safeParse(input);
     if (!parsed.success) {
       return c.json({ error: "Invalid input", details: parsed.error.flatten() }, 400);
     }
 
-    const { latitude, longitude, municipality } = parsed.data;
+    const { latitude, longitude, municipality, category } = parsed.data;
     const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase.rpc("get_visible_demands", {
       user_lat: latitude,
       user_lng: longitude,
-      filter_municipality: municipality || null
+      filter_municipality: municipality || null,
+      exclude_contractor_id: auth.userId,
+      filter_category: category || null
     });
 
     if (error) {
@@ -218,6 +217,35 @@ export const demandHandlers = {
       return c.json({ error: "Database error", details: error.message }, 500);
     }
 
-    return c.json(data.map(mapDemandRow));
+    return c.json(data.map((row: Parameters<typeof mapDemandRow>[0]) => mapDemandRow(row)));
+  },
+
+  "demands.getById": async (c: Context, input: unknown) => {
+    getAuthUser(c);
+    const parsed = getDemandByIdSchema.safeParse(input);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid input", details: parsed.error.flatten() }, 400);
+    }
+
+    const supabase = getSupabaseAdmin();
+    const { data: demand, error } = await supabase
+      .from("demands")
+      .select()
+      .eq("id", parsed.data.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[demands.getById] Database error:", error);
+      return c.json({ error: "Database error", details: error.message }, 500);
+    }
+    if (!demand) {
+      return c.json({ error: "Demand not found" }, 404);
+    }
+
+    const contractor = await getContactWithClerkFallback(supabase, demand.contractor_id);
+
+    return c.json(
+      mapDemandRow(demand, { display_name: contractor.displayName, phone: contractor.phone })
+    );
   }
 };

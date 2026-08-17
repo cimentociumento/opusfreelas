@@ -1,7 +1,14 @@
 import { z } from "zod";
+import { serviceCategories } from "../discovery/schemas";
 
 export const demandStatusSchema = z.enum(["aberta", "em_contato", "concluida", "cancelada", "encerrada"]);
 export type DemandStatus = z.infer<typeof demandStatusSchema>;
+
+// serviceType da demanda é texto livre (sem enum no banco) — este array só
+// alimenta os pickers de chip em create.tsx/[id].tsx. "Outros serviços" fica
+// aqui, não em serviceCategories, para não afetar filtros/categorias do
+// lado prestador que reaproveitam aquele array.
+export const demandServiceTypeOptions = [...serviceCategories, "Outros serviços"] as const;
 
 export const demandUrgencySchema = z.enum(["baixa", "media", "alta", "urgente_hoje"]);
 export type DemandUrgency = z.infer<typeof demandUrgencySchema>;
@@ -41,6 +48,15 @@ export const getDemandByIdSchema = z.object({
 });
 
 export type GetDemandByIdInput = z.infer<typeof getDemandByIdSchema>;
+
+export const listVisibleDemandsSchema = z.object({
+  latitude: z.number(),
+  longitude: z.number(),
+  municipality: z.string().optional(),
+  category: z.string().optional(),
+});
+
+export type ListVisibleDemandsInput = z.infer<typeof listVisibleDemandsSchema>;
 
 export const demandResponseSchema = z.object({
   id: z.string().uuid(),
