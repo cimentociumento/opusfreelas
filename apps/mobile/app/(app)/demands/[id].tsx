@@ -1,23 +1,47 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  ActivityIndicator,
-  TextInput } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Linking, ScrollView, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   DemandResponse,
   demandUrgencySchema,
-  updateDemandRpcSchema,
   type DemandUrgency } from "@amauc/shared";
 import { useRpc } from "../../../hooks/use-rpc";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { isDemandOwner } from "../../../lib/auth-constants";
-import { Button } from "../../../components/Button";
+import { Button } from "../../../components/ui/button";
+import { Card } from "../../../components/ui/card";
+import { Input } from "../../../components/ui/input";
+import { Text } from "../../../components/ui/text";
 import { useToast } from "../../../components/Toast";
 import { theme } from "../../../components/theme";
+
+const STATUS_LABEL: Record<string, string> = {
+  aberta: "Aberta",
+  em_contato: "Em contato",
+  concluida: "Concluída",
+  cancelada: "Cancelada",
+  encerrada: "Encerrada",
+};
+
+const STATUS_BADGE_CLASS: Record<string, string> = {
+  aberta: "bg-primary/10",
+  em_contato: "bg-secondary",
+  concluida: "bg-primary/10",
+  cancelada: "bg-destructive/10",
+  encerrada: "bg-muted",
+};
+
+const STATUS_TEXT_CLASS: Record<string, string> = {
+  aberta: "text-primary",
+  em_contato: "text-secondary-foreground",
+  concluida: "text-primary",
+  cancelada: "text-destructive",
+  encerrada: "text-muted-foreground",
+};
+
+function isDemandOpenForActions(status: string): boolean {
+  return status === "aberta" || status === "em_contato";
+}
 
 function paramToString(value: string | string[] | undefined): string | undefined {
   if (value == null) return undefined;
@@ -55,6 +79,8 @@ export default function DemandDetailsScreen() {
 
   const [demand, setDemand] = useState<DemandResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
@@ -68,28 +94,25 @@ export default function DemandDetailsScreen() {
       return;
     }
 
-    // Espera o modo dev/Clerk resolverem — senão o RPC dispara com o
-    // isDevMode inicial (falso) e cai no caminho Clerk sem sessão real,
-    // o que faz esta tela mandar o usuário de volta por engano.
+    // Espera o Clerk resolver a sessão — senão o RPC dispara sem token válido
+    // e esta tela manda o usuário de volta por engano.
     if (!isAuthReady) {
       return;
     }
 
     let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
 
     const loadDemand = async () => {
       try {
-        const demands = await callRpc<DemandResponse[]>("demands.listMyDemands");
+        const found = await callRpc<DemandResponse>("demands.getById", { id });
         if (cancelled) return;
-        const found = demands.find((d) => d.id === id);
-        if (found) {
-          setDemand(found);
-        } else {
-          router.back();
-        }
-      } catch {
+        setDemand(found);
+      } catch (err) {
         if (!cancelled) {
-          router.back();
+          console.error("[demands.detail] loadDemand falhou", err);
+          setLoadError("Não foi possível carregar esta demanda.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -100,19 +123,27 @@ export default function DemandDetailsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, callRpc, router, isAuthReady]);
+    // callRpc/router de propósito fora do array: sua identidade não é
+    // garantidamente estável entre renders, e reincluí-los aqui — combinado
+    // com o setLoading(true) acima — reabre o loop de re-render que este
+    // efeito existe para evitar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isAuthReady, reloadKey]);
 
-  const handleUpdateStatus = async (newStatus: "concluida" | "cancelada") => {
+  const retryLoad = useCallback(() => setReloadKey((key) => key + 1), []);
+
+  const handleUpdateStatus = async (newStatus: "em_contato" | "concluida" | "cancelada") => {
     if (!id) return;
 
     setUpdatingStatus(true);
     try {
-      // Concluir/cancelar encerra o ciclo de vida da demanda: ela é excluída
-      // (não só marcada) e some da lista de "Minhas Demandas" ao voltar.
-      await callRpc<{ deleted: boolean; id: string }>("demands.delete", { id });
-      const statusLabel = newStatus === "concluida" ? "concluída" : "cancelada";
-      showToast(`Demanda marcada como ${statusLabel} e removida da lista`, "success");
-      router.back();
+      // Atualiza o status em vez de excluir: preserva o registro para
+      // histórico em "Minhas Demandas" e para uma futura avaliação
+      // pós-conclusão (Etapa 4). "Excluir" continua sendo uma ação separada
+      // para quem realmente quer remover a demanda.
+      const updated = await callRpc<DemandResponse>("demands.update", { id, status: newStatus });
+      setDemand(updated);
+      showToast(`Demanda marcada como ${(STATUS_LABEL[newStatus] ?? newStatus).toLowerCase()}`, "success");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Erro ao atualizar status.";
       showToast(message, "error");
@@ -123,7 +154,7 @@ export default function DemandDetailsScreen() {
 
   const handleSaveEdit = async () => {
     if (!id || !editForm) return;
-    
+
     if (!editForm.serviceType.trim() || !editForm.description.trim() || !editForm.municipality.trim()) {
       showToast("Preencha todos os campos obrigatórios.", "error");
       return;
@@ -159,10 +190,42 @@ export default function DemandDetailsScreen() {
     }
   };
 
+  const handleWhatsApp = () => {
+    if (!demand?.contractorPhone) return;
+    const digits = demand.contractorPhone.replace(/\D/g, "");
+    const message = encodeURIComponent(
+      `Olá${demand.contractorName ? " " + demand.contractorName : ""}, vi sua demanda "${demand.serviceType}" no Opus Freelas e tenho interesse.`
+    );
+    Linking.openURL(`https://wa.me/55${digits}?text=${message}`).catch(() => {
+      showToast("Não foi possível abrir o WhatsApp.", "error");
+    });
+  };
+
+  const handleCall = () => {
+    if (!demand?.contractorPhone) return;
+    Linking.openURL(`tel:${demand.contractorPhone.replace(/\D/g, "")}`).catch(() => {
+      showToast("Não foi possível iniciar a ligação.", "error");
+    });
+  };
+
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background p-8">
+        <Card className="w-full items-center gap-3 p-6">
+          <Text variant="h4">Não foi possível carregar</Text>
+          <Text className="text-center text-muted-foreground">{loadError}</Text>
+          <Button onPress={retryLoad}>
+            <Text>Tentar novamente</Text>
+          </Button>
+        </Card>
       </View>
     );
   }
@@ -172,264 +235,215 @@ export default function DemandDetailsScreen() {
   const isOwner = isAuthReady && isDemandOwner(demand.contractorId, currentUserId);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView className="flex-1 bg-background">
       <Stack.Screen options={{ title: "Detalhes da Demanda" }} />
 
-      <View style={styles.card}>
-        <View style={styles.header}>
-          <View style={[styles.statusBadge, styles[`status_${demand.status}`]]}>
-            <Text style={styles.statusText}>{demand.status}</Text>
+      <Card className="m-4 gap-4 p-6">
+        <View className="flex-row items-center justify-between">
+          <View className={`rounded-md px-2.5 py-1 ${STATUS_BADGE_CLASS[demand.status] ?? "bg-muted"}`}>
+            <Text
+              className={`text-xs font-bold uppercase ${STATUS_TEXT_CLASS[demand.status] ?? "text-muted-foreground"}`}
+            >
+              {STATUS_LABEL[demand.status] ?? demand.status}
+            </Text>
           </View>
-          <Text style={styles.date}>{new Date(demand.createdAt).toLocaleDateString("pt-BR")}</Text>
+          <Text className="text-xs text-muted-foreground">
+            {new Date(demand.createdAt).toLocaleDateString("pt-BR")}
+          </Text>
         </View>
 
-        <View>
-          {isEditing && editForm ? (
-            <View style={{ gap: theme.spacing.md }}>
-              <Text style={styles.label}>🛠️ Tipo de Serviço</Text>
-              <TextInput
-                style={styles.input}
-                value={editForm.serviceType}
-                onChangeText={(text) => setEditForm({ ...editForm, serviceType: text })}
-                editable={!isSaving}
-              />
+        {isEditing && editForm ? (
+          <View className="gap-4">
+            <Text className="text-sm font-bold">🛠️ Tipo de Serviço</Text>
+            <Input
+              value={editForm.serviceType}
+              onChangeText={(text) => setEditForm({ ...editForm, serviceType: text })}
+              editable={!isSaving}
+            />
 
-              <Text style={styles.label}>📝 Descrição do serviço</Text>
-              <TextInput
-                style={[styles.input, { height: 80, textAlignVertical: "top" }]}
-                multiline
-                value={editForm.description}
-                onChangeText={(text) => setEditForm({ ...editForm, description: text })}
-                editable={!isSaving}
-              />
+            <Text className="text-sm font-bold">📝 Descrição do serviço</Text>
+            <Input
+              className="h-20"
+              textAlignVertical="top"
+              multiline
+              value={editForm.description}
+              onChangeText={(text) => setEditForm({ ...editForm, description: text })}
+              editable={!isSaving}
+            />
 
-              <Text style={styles.label}>📍 Município</Text>
-              <TextInput
-                style={styles.input}
-                value={editForm.municipality}
-                onChangeText={(text) => setEditForm({ ...editForm, municipality: text })}
-                editable={!isSaving}
-              />
+            <Text className="text-sm font-bold">📍 Município</Text>
+            <Input
+              value={editForm.municipality}
+              onChangeText={(text) => setEditForm({ ...editForm, municipality: text })}
+              editable={!isSaving}
+            />
 
-              <Text style={styles.label}>⚡ Nível de Urgência</Text>
-              <View style={styles.chipRow}>
-                {demandUrgencySchema.options.map((u) => (
-                  <Button
-                    key={u}
-                    title={u.replace("_", " ")}
-                    variant={editForm.urgency === u ? "primary" : "outline"}
-                    size="sm"
-                    style={styles.urgencyChip}
-                    onPress={() => setEditForm({ ...editForm, urgency: u })}
-                    disabled={isSaving}
-                  />
-                ))}
-              </View>
-
-              <Text style={styles.label}>📏 Raio de Busca: {editForm.visibilityRadius}km</Text>
-              <View style={styles.chipRow}>
-                {[5, 10, 20, 50].map((r) => (
-                  <Button
-                    key={r}
-                    title={`${r}km`}
-                    variant={editForm.visibilityRadius === r ? "primary" : "outline"}
-                    size="sm"
-                    style={styles.radiusChip}
-                    onPress={() => setEditForm({ ...editForm, visibilityRadius: r })}
-                    disabled={isSaving}
-                  />
-                ))}
-              </View>
-
-              <View style={styles.actions}>
+            <Text className="text-sm font-bold">⚡ Nível de Urgência</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {demandUrgencySchema.options.map((u) => (
                 <Button
-                  title={isSaving ? "Salvando..." : "Salvar Edição"}
-                  variant="primary"
-                  onPress={handleSaveEdit}
-                  style={styles.actionFlex}
+                  key={u}
+                  variant={editForm.urgency === u ? "default" : "outline"}
+                  size="sm"
+                  className="min-w-20 flex-1"
+                  onPress={() => setEditForm({ ...editForm, urgency: u })}
                   disabled={isSaving}
-                  loading={isSaving}
-                />
-                <Button
-                  title="Cancelar"
-                  variant="ghost"
-                  onPress={() => setIsEditing(false)}
-                  style={styles.actionFlex}
-                  disabled={isSaving}
-                />
-              </View>
+                >
+                  <Text className="capitalize">{u.replace("_", " ")}</Text>
+                </Button>
+              ))}
             </View>
-          ) : (
-            <>
-              <Text style={styles.title}>{demand.serviceType}</Text>
-              <Text style={styles.description}>{demand.description}</Text>
 
-              <View style={styles.infoGrid}>
-                <InfoItem label="Municipio" value={demand.municipality} />
-                <InfoItem label="Urgencia" value={demand.urgency.replace("_", " ")} />
-                <InfoItem label="Visibilidade" value={`${demand.visibilityRadius}km`} />
+            <Text className="text-sm font-bold">📏 Raio de Busca: {editForm.visibilityRadius}km</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {[5, 10, 20, 50].map((r) => (
+                <Button
+                  key={r}
+                  variant={editForm.visibilityRadius === r ? "default" : "outline"}
+                  size="sm"
+                  className="min-w-16 flex-1"
+                  onPress={() => setEditForm({ ...editForm, visibilityRadius: r })}
+                  disabled={isSaving}
+                >
+                  <Text>{r}km</Text>
+                </Button>
+              ))}
+            </View>
+
+            <View className="flex-row gap-2">
+              <Button className="flex-1" onPress={handleSaveEdit} disabled={isSaving}>
+                <Text>{isSaving ? "Salvando..." : "Salvar Edição"}</Text>
+              </Button>
+              <Button
+                variant="ghost"
+                className="flex-1"
+                onPress={() => setIsEditing(false)}
+                disabled={isSaving}
+              >
+                <Text>Cancelar</Text>
+              </Button>
+            </View>
+          </View>
+        ) : (
+          <View>
+            <Text className="mb-2 text-2xl font-bold text-primary">{demand.serviceType}</Text>
+            <Text className="mb-6 text-base leading-6 text-muted-foreground">
+              {demand.description}
+            </Text>
+
+            <View className="mb-6 flex-row flex-wrap border-y border-border py-4">
+              <InfoItem label="Município" value={demand.municipality} />
+              <InfoItem label="Urgência" value={demand.urgency.replace("_", " ")} />
+              <InfoItem label="Visibilidade" value={`${demand.visibilityRadius}km`} />
+            </View>
+
+            {isOwner && (
+              <View className="border-t border-border pt-4">
+                <Text className="mb-4 text-xs font-bold uppercase text-muted-foreground">
+                  Ações da Demanda
+                </Text>
+
+                {isDemandOpenForActions(demand.status) ? (
+                  <>
+                    {demand.status === "aberta" ? (
+                      <View className="mb-3">
+                        <Button
+                          variant="outline"
+                          onPress={() => handleUpdateStatus("em_contato")}
+                          disabled={updatingStatus || isDeleting}
+                        >
+                          <Text>Marcar como Em Contato</Text>
+                        </Button>
+                      </View>
+                    ) : null}
+
+                    <View className="mb-3 flex-row gap-2">
+                      <Button
+                        className="flex-1"
+                        onPress={() => handleUpdateStatus("concluida")}
+                        disabled={updatingStatus || isDeleting}
+                      >
+                        <Text>Concluir</Text>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onPress={() => {
+                          setEditForm(toEditForm(demand));
+                          setIsEditing(true);
+                        }}
+                        disabled={updatingStatus || isDeleting}
+                      >
+                        <Text>Editar</Text>
+                      </Button>
+                    </View>
+                    <View className="flex-row gap-2">
+                      <Button
+                        variant="ghost"
+                        className="flex-1"
+                        onPress={() => handleUpdateStatus("cancelada")}
+                        disabled={updatingStatus || isDeleting}
+                      >
+                        <Text className="text-destructive">Cancelar Demanda</Text>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="flex-1"
+                        onPress={handleDelete}
+                        disabled={updatingStatus || isDeleting}
+                      >
+                        <Text className="text-destructive">
+                          {isDeleting ? "Excluindo..." : "Excluir"}
+                        </Text>
+                      </Button>
+                    </View>
+                  </>
+                ) : (
+                  <Button variant="ghost" onPress={handleDelete} disabled={isDeleting}>
+                    <Text className="text-destructive">
+                      {isDeleting ? "Excluindo..." : "Excluir"}
+                    </Text>
+                  </Button>
+                )}
               </View>
+            )}
 
-              {isOwner && (
-                <View style={styles.ownerPanel}>
-                  <Text style={styles.panelTitle}>Ações da Demanda</Text>
-                  <View style={styles.actions}>
-                    <Button
-                      title="Concluir"
-                      variant="primary"
-                      onPress={() => handleUpdateStatus("concluida")}
-                      style={styles.actionFlex}
-                      disabled={updatingStatus || isDeleting}
-                      loading={updatingStatus}
-                    />
-                    <Button
-                      title="Editar"
-                      variant="outline"
-                      onPress={() => {
-                        setEditForm(toEditForm(demand));
-                        setIsEditing(true);
-                      }}
-                      style={styles.actionFlex}
-                      disabled={updatingStatus || isDeleting}
-                    />
+            {!isOwner && (
+              <View className="border-t border-border pt-4">
+                <Text className="mb-4 text-xs font-bold uppercase text-muted-foreground">
+                  Contato
+                </Text>
+                <Text className="mb-4 text-xl font-semibold">
+                  {demand.contractorName ?? "Contratante"}
+                </Text>
+                {demand.contractorPhone ? (
+                  <View className="flex-row gap-2">
+                    <Button className="flex-1" onPress={handleWhatsApp}>
+                      <Text>Falar no WhatsApp</Text>
+                    </Button>
+                    <Button variant="outline" className="flex-1" onPress={handleCall}>
+                      <Text>Ligar</Text>
+                    </Button>
                   </View>
-                  <View style={styles.actions}>
-                    <Button
-                      title={updatingStatus ? "Cancelando..." : "Cancelar Demanda"}
-                      variant="ghost"
-                      onPress={() => handleUpdateStatus("cancelada")}
-                      style={styles.actionFlex}
-                      disabled={updatingStatus || isDeleting}
-                      textStyle={{ color: theme.colors.error }}
-                    />
-                    <Button
-                      title={isDeleting ? "Excluindo..." : "Excluir"}
-                      variant="ghost"
-                      onPress={handleDelete}
-                      style={styles.actionFlex}
-                      disabled={updatingStatus || isDeleting}
-                      textStyle={{ color: theme.colors.error }}
-                      loading={isDeleting}
-                    />
-                  </View>
-                </View>
-              )}
-            </>
-          )}
-        </View>
-      </View>
+                ) : (
+                  <Text className="text-sm text-muted-foreground">
+                    Este contratante ainda não cadastrou um telefone de contato.
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+      </Card>
     </ScrollView>
   );
 }
 
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.infoItem}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+    <View className="mb-2 w-1/2">
+      <Text className="mb-0.5 text-xs text-muted-foreground">{label}</Text>
+      <Text className="text-sm font-semibold capitalize">{value}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center" },
-  card: {
-    backgroundColor: theme.colors.surface,
-    margin: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    ...theme.shadows.md },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: theme.spacing.md },
-  statusBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: theme.borderRadius.sm },
-  status_aberta: { backgroundColor: theme.colors.primaryLight },
-  status_em_contato: { backgroundColor: theme.colors.secondaryLight },
-  status_concluida: { backgroundColor: theme.colors.successLight || "#e6fffa" },
-  status_cancelada: { backgroundColor: theme.colors.errorLight || "#fff5f5" },
-  status_encerrada: { backgroundColor: theme.colors.border },
-  statusText: {
-    ...theme.typography.caption,
-    fontWeight: "700",
-    textTransform: "uppercase" },
-  date: {
-    ...theme.typography.caption,
-    color: theme.colors.textLight },
-  title: {
-    ...theme.typography.h2,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.sm },
-  description: {
-    ...theme.typography.body1,
-    color: theme.colors.textSecondary,
-    lineHeight: 24,
-    marginBottom: theme.spacing.lg },
-  infoGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: theme.colors.border,
-    paddingVertical: theme.spacing.md,
-    marginBottom: theme.spacing.lg },
-  infoItem: {
-    width: "50%",
-    marginBottom: theme.spacing.sm },
-  infoLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.textLight,
-    marginBottom: 2 },
-  infoValue: {
-    ...theme.typography.body2,
-    fontWeight: "600",
-    color: theme.colors.text,
-    textTransform: "capitalize" },
-  label: {
-    ...theme.typography.body2,
-    color: theme.colors.text,
-    fontWeight: "700" },
-  input: {
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    ...theme.typography.body1 },
-  actions: {
-    flexDirection: "row",
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md },
-  actionFlex: {
-    flex: 1 },
-  chipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: theme.spacing.sm },
-  urgencyChip: {
-    flex: 1,
-    minWidth: 80 },
-  radiusChip: {
-    flex: 1,
-    minWidth: 60 },
-  ownerPanel: {
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderColor: theme.colors.border },
-  panelTitle: {
-    ...theme.typography.caption,
-    color: theme.colors.textLight,
-    marginBottom: theme.spacing.md,
-    textTransform: "uppercase",
-    fontWeight: "700" } });
