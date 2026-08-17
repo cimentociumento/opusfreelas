@@ -1,2 +1,0 @@
-
-C:\opusfreelas>  "C:\Program Files\nodejs\\node.exe"  "C:\Program Files\nodejs\\node_modules\corepack\dist\corepack.js" pnpm --filter @amauc/api exec node --import tsx -e import("@amauc/shared").then((m)=;process.exit(1);})

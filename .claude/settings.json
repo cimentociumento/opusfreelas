@@ -6,11 +6,8 @@
     "claude-md-management@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
-<<<<<<< HEAD
     "supabase@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true
-=======
-    "supabase@claude-plugins-official": true
   },
   "hooks": {
     "PreToolUse": [
@@ -53,6 +50,5 @@
       "Read(./apps/*/.env)",
       "Read(./apps/*/.env.local)"
     ]
->>>>>>> origin/feat/nativewind-piloto
   }
 }
