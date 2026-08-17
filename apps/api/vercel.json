@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "echo 'no build step needed: the /api function bundles its own TypeScript, and @amauc/shared is consumed straight from src/ (see its package.json exports) — never from a compiled dist'",
+  "buildCommand": "mkdir -p public && echo '<!-- opusfreelas-api is a serverless function, not a static site — see api/index.ts -->' > public/index.html",
+  "outputDirectory": "public",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api" }
   ]
