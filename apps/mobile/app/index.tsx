@@ -1,9 +1,10 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useRouter, useNavigation } from "expo-router";
 import { useEffect } from "react";
-import { ActivityIndicator, StyleSheet, Text, View, ScrollView } from "react-native";
-import { Button } from "../components/Button";
-import { Card } from "../components/Card";
+import { ActivityIndicator, ScrollView, View } from "react-native";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Text } from "../components/ui/text";
 import { theme } from "../components/theme";
 
 export default function HomeScreen() {
@@ -16,43 +17,46 @@ export default function HomeScreen() {
   }, [navigation]);
 
   return (
-      <ScrollView style={styles.container}>
-        <View style={styles.hero}>
-          <Text style={styles.title}>Opus Freelas</Text>
-          <Text style={styles.tagline}>Conectando profissionais locais à quem precisa</Text>
-        </View>
+    <ScrollView className="flex-1 bg-background">
+      <View className="items-center bg-primary px-6 py-10">
+        <Text variant="h1" className="text-center text-primary-foreground">
+          Opus Freelas
+        </Text>
+        <Text className="mt-2 text-center text-primary-foreground/90">
+          Conectando profissionais locais à quem precisa
+        </Text>
+      </View>
 
-        {!isAuthLoaded ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={theme.colors.primary} />
-          </View>
-        ) : isSignedIn ? (
-          <SignedInContent />
-        ) : (
-          <View style={styles.authSection}>
-            <Card style={styles.authCard}>
-              <Text style={styles.authTitle}>Bem-vindo ao Opus Freelas</Text>
-              <Text style={styles.authSubtitle}>
-                Encontre os melhores profissionais para serviços manuais e rurais na região da AMAUC
-              </Text>
-              <Button
-                title="Entrar"
-                variant="primary"
-                size="lg"
-                style={styles.actionButton}
-                onPress={() => router.push("/sign-in")}
-              />
-              <Button
-                title="Cadastrar-se"
-                variant="secondary"
-                size="lg"
-                style={styles.actionButton}
-                onPress={() => router.push("/sign-up")}
-              />
-            </Card>
-          </View>
-        )}
-      </ScrollView>
+      {!isAuthLoaded ? (
+        <View className="items-center p-4">
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        </View>
+      ) : isSignedIn ? (
+        <SignedInContent />
+      ) : (
+        <View className="mt-8 px-6">
+          <Card className="items-center gap-4 p-6">
+            <Text variant="h3" className="text-center">
+              Bem-vindo ao Opus Freelas
+            </Text>
+            <Text className="text-center text-muted-foreground">
+              Encontre os melhores profissionais para serviços manuais e rurais na região da AMAUC
+            </Text>
+            <Button size="lg" className="w-full" onPress={() => router.push("/sign-in")}>
+              <Text>Entrar</Text>
+            </Button>
+            <Button
+              size="lg"
+              variant="secondary"
+              className="w-full"
+              onPress={() => router.push("/sign-up")}
+            >
+              <Text>Cadastrar-se</Text>
+            </Button>
+          </Card>
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
@@ -62,157 +66,46 @@ function SignedInContent() {
   const router = useRouter();
 
   return (
-    <View style={styles.content}>
-      <View style={styles.welcomeSection}>
-        <Card style={styles.welcomeCard}>
-          <Text style={styles.welcomeTitle}>Olá, {user?.firstName || user?.username || "usuário"}! 👋</Text>
-          <Text style={styles.welcomeSubtitle}>
-            Encontre profissionais para seus serviços
-          </Text>
+    <View className="gap-6 p-6">
+      <Card className="items-center gap-2 p-6">
+        <Text variant="h3" className="text-primary">
+          Olá, {user?.firstName || user?.username || "usuário"}! 👋
+        </Text>
+        <Text className="text-muted-foreground">Encontre profissionais para seus serviços</Text>
+      </Card>
+
+      <View className="gap-3">
+        <Text className="ml-1 text-lg font-semibold">🏠 Sou Contratante</Text>
+        <Card className="gap-3 p-6">
+          <Button size="lg" onPress={() => router.push("/discovery")}>
+            <Text>🔍 Encontrar Profissionais</Text>
+          </Button>
+          <Button variant="secondary" onPress={() => router.push("/demands/create")}>
+            <Text>📝 Publicar Demanda</Text>
+          </Button>
+          <Button variant="outline" onPress={() => router.push("/demands")}>
+            <Text>📋 Minhas Demandas</Text>
+          </Button>
         </Card>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🏠 Sou Contratante</Text>
-        <Card variant="elevated" style={styles.actionCard}>
-          <Button
-            title="🔍 Encontrar Profissionais"
-            variant="primary"
-            size="lg"
-            style={styles.actionButton}
-            onPress={() => router.push("/discovery")}
-          />
-          <Button
-            title="📝 Publicar Demanda"
-            variant="secondary"
-            size="md"
-            style={styles.actionButton}
-            onPress={() => router.push("/demands/create")}
-          />
-          <Button
-            title="📋 Minhas Demandas"
-            variant="outline"
-            size="md"
-            style={styles.actionButton}
-            onPress={() => router.push("/demands")}
-          />
+      <View className="gap-3">
+        <Text className="ml-1 text-lg font-semibold">👨‍🔧 Sou Prestador</Text>
+        <Card className="gap-3 p-6">
+          <Button size="lg" onPress={() => router.push("/profile/provider-setup")}>
+            <Text>⚙️ Configurar Meu Perfil</Text>
+          </Button>
+          <Button variant="secondary" size="lg" onPress={() => router.push("/demands/available")}>
+            <Text>📋 Vagas na Região</Text>
+          </Button>
         </Card>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>👨‍🔧 Sou Prestador</Text>
-        <Card variant="elevated" style={styles.actionCard}>
-          <Button
-            title="⚙️ Configurar Meu Perfil"
-            variant="primary"
-            size="lg"
-            style={styles.actionButton}
-            onPress={() => router.push("/profile/provider-setup")}
-          />
-          <Button
-            title="📋 Vagas na Região"
-            variant="secondary"
-            size="lg"
-            style={styles.actionButton}
-            onPress={() => router.push("/demands/available")}
-          />
-        </Card>
-      </View>
-
-      <View style={styles.logoutSection}>
-        <Button
-          title="Sair"
-          variant="ghost"
-          size="sm"
-          onPress={() => signOut()}
-        />
+      <View className="items-center pt-4">
+        <Button variant="ghost" size="sm" onPress={() => signOut()}>
+          <Text>Sair</Text>
+        </Button>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  hero: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.xl,
-    alignItems: "center",
-  },
-  title: {
-    ...theme.typography.h1,
-    color: "#fff",
-    textAlign: "center",
-    marginBottom: theme.spacing.sm,
-  },
-  tagline: {
-    ...theme.typography.body1,
-    color: "rgba(255, 255, 255, 0.9)",
-    textAlign: "center",
-  },
-  content: {
-    padding: theme.spacing.lg,
-  },
-  authSection: {
-    marginTop: theme.spacing.xl,
-  },
-  authCard: {
-    alignItems: "center",
-    padding: theme.spacing.xl,
-  },
-  authTitle: {
-    ...theme.typography.h2,
-    color: theme.colors.text,
-    textAlign: "center",
-    marginBottom: theme.spacing.md,
-  },
-  authSubtitle: {
-    ...theme.typography.body1,
-    color: theme.colors.textSecondary,
-    textAlign: "center",
-    marginBottom: theme.spacing.lg,
-    lineHeight: 24,
-  },
-  welcomeSection: {
-    marginBottom: theme.spacing.lg,
-  },
-  welcomeCard: {
-    alignItems: "center",
-    padding: theme.spacing.lg,
-  },
-  welcomeTitle: {
-    ...theme.typography.h2,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.sm,
-  },
-  welcomeSubtitle: {
-    ...theme.typography.body1,
-    color: theme.colors.textSecondary,
-  },
-  section: {
-    marginBottom: theme.spacing.lg,
-  },
-  sectionTitle: {
-    ...theme.typography.h3,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.md,
-    marginLeft: theme.spacing.sm,
-  },
-  actionCard: {
-    padding: theme.spacing.lg,
-  },
-  actionButton: {
-    marginBottom: theme.spacing.md,
-  },
-  logoutSection: {
-    marginTop: theme.spacing.xl,
-    alignItems: "center",
-  },
-  loadingContainer: {
-    padding: theme.spacing.md,
-    alignItems: "center",
-  },
-});

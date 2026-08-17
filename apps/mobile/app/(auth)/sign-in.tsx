@@ -6,8 +6,11 @@ import {
 } from "@clerk/clerk-expo";
 import { Redirect, useRouter } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { useRpc } from "../../hooks/use-rpc";
+import { ActivityIndicator, ScrollView, View } from "react-native";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Text } from "../../components/ui/text";
+import { theme } from "../../components/theme";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message.trim()) return error.message;
@@ -31,7 +34,6 @@ export default function SignInScreen() {
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const { setActive: activateSession } = useClerk();
   const { signIn, isLoaded: signInLoaded } = useSignIn();
-  const { callRpc } = useRpc();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -51,14 +53,7 @@ export default function SignInScreen() {
   async function activateClerkSession(sessionId: string | null | undefined) {
     if (!sessionId) throw new Error("Sessão não foi criada. Tente novamente.");
     await activateSession({ session: sessionId });
-
-    try {
-      const profile = await callRpc<{ displayName?: string | null }>("identity.getProfile");
-      router.replace(profile.displayName ? "/" : "/onboarding");
-    } catch (error) {
-      console.error("[sign-in.activateClerkSession] Failed to check profile", error);
-      router.replace("/onboarding");
-    }
+    router.replace("/");
   }
 
   async function handleSignIn() {
@@ -145,14 +140,18 @@ export default function SignInScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Entrar na Conta</Text>
+    <ScrollView
+      className="flex-1 bg-background"
+      contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24, gap: 14 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text variant="h2">Entrar na Conta</Text>
       {!needsSecondFactor ? (
-        <Text style={styles.subtitle}>
+        <Text className="mb-2 text-muted-foreground">
           Informe seu nome de usuário e senha para acessar o Opus Freelas.
         </Text>
       ) : (
-        <Text style={styles.subtitle}>
+        <Text className="mb-2 text-muted-foreground">
           {secondFactorStrategy === "phone_code"
             ? "Um código de verificação foi enviado para o seu telefone."
             : "Digite o código de verificação do seu aplicativo ou SMS."}
@@ -161,43 +160,41 @@ export default function SignInScreen() {
 
       {!needsSecondFactor ? (
         <>
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Nome de Usuário (Username)</Text>
-            <TextInput
+          <View className="gap-1">
+            <Text className="text-sm font-semibold">Nome de Usuário (Username)</Text>
+            <Input
               value={username}
               onChangeText={setUsername}
               placeholder="Digite seu nome de usuário"
               autoCapitalize="none"
               autoCorrect={false}
-              style={styles.input}
             />
           </View>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Senha</Text>
-            <TextInput
+          <View className="gap-1">
+            <Text className="text-sm font-semibold">Senha</Text>
+            <Input
               value={password}
               onChangeText={setPassword}
               placeholder="Digite sua senha"
               secureTextEntry
               autoCapitalize="none"
-              style={styles.input}
             />
           </View>
 
-          <Pressable
-            style={[styles.button, (loading || !username.trim() || !password) && styles.buttonDisabled]}
+          <Button
+            className="mt-2"
             onPress={handleSignIn}
             disabled={loading || !username.trim() || !password}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonLabel}>Entrar</Text>}
-          </Pressable>
+            {loading ? <ActivityIndicator color={theme.colors.surface} /> : <Text>Entrar</Text>}
+          </Button>
         </>
       ) : (
         <>
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Código de Verificação</Text>
-            <TextInput
+          <View className="gap-1">
+            <Text className="text-sm font-semibold">Código de Verificação</Text>
+            <Input
               value={code}
               onChangeText={setCode}
               placeholder="Digite o código"
@@ -205,20 +202,15 @@ export default function SignInScreen() {
               autoComplete="one-time-code"
               textContentType="oneTimeCode"
               maxLength={6}
-              style={styles.input}
             />
           </View>
 
-          <Pressable
-            style={[styles.button, (loading || !code.trim()) && styles.buttonDisabled]}
-            onPress={handleVerifySecondFactor}
-            disabled={loading || !code.trim()}
-          >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonLabel}>Confirmar Código</Text>}
-          </Pressable>
+          <Button className="mt-2" onPress={handleVerifySecondFactor} disabled={loading || !code.trim()}>
+            {loading ? <ActivityIndicator color={theme.colors.surface} /> : <Text>Confirmar Código</Text>}
+          </Button>
 
-          <Pressable
-            style={styles.secondaryButton}
+          <Button
+            variant="ghost"
             onPress={() => {
               setNeedsSecondFactor(false);
               setCode("");
@@ -226,103 +218,21 @@ export default function SignInScreen() {
             }}
             disabled={loading}
           >
-            <Text style={styles.secondaryButtonLabel}>Voltar</Text>
-          </Pressable>
+            <Text>Voltar</Text>
+          </Button>
         </>
       )}
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text className="text-sm text-destructive">{error}</Text> : null}
 
       {!needsSecondFactor && (
-        <View style={styles.footerLinkContainer}>
-          <Text style={styles.footerText}>Não tem uma conta?</Text>
-          <Pressable onPress={() => router.push("/sign-up")}>
-            <Text style={styles.linkText}> Cadastre-se</Text>
-          </Pressable>
+        <View className="mt-5 flex-row items-center justify-center gap-1">
+          <Text className="text-sm text-muted-foreground">Não tem uma conta?</Text>
+          <Button variant="link" size="sm" onPress={() => router.push("/sign-up")}>
+            <Text>Cadastre-se</Text>
+          </Button>
         </View>
       )}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 24,
-    gap: 14,
-    backgroundColor: "#fff",
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#4b5563",
-    marginBottom: 8,
-  },
-  fieldGroup: {
-    gap: 4,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#374151",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    backgroundColor: "#f9fafb",
-  },
-  button: {
-    backgroundColor: "#116530",
-    borderRadius: 8,
-    alignItems: "center",
-    paddingVertical: 14,
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonLabel: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  secondaryButton: {
-    alignItems: "center",
-    paddingVertical: 10,
-    marginTop: 4,
-  },
-  secondaryButtonLabel: {
-    color: "#116530",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  error: {
-    color: "#b00020",
-    fontSize: 14,
-    marginTop: 4,
-  },
-  footerLinkContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 20,
-  },
-  footerText: {
-    fontSize: 14,
-    color: "#6b7280",
-  },
-  linkText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#116530",
-  },
-});

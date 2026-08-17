@@ -1,22 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
-  TextInput,
-} from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import { useRpc } from "../../../hooks/use-rpc";
 import { useLocation } from "../../../hooks/use-location";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
 import { serviceCategories, ServiceCategory } from "@amauc/shared";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Text } from "../../../components/ui/text";
 import { useToast } from "../../../components/Toast";
 import { theme } from "../../../components/theme";
-import { resolvePortfolioContentType, isProviderSocialProfileComplete } from "../../../lib/portfolio";
+import { resolvePortfolioContentType } from "../../../lib/portfolio";
 
 export default function ProviderSetupScreen() {
   const router = useRouter();
@@ -32,14 +27,14 @@ export default function ProviderSetupScreen() {
 
   const [municipality, setMunicipality] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [phone, setPhone] = useState("");
   const [bio, setBio] = useState("");
   const [yearsExperience, setYearsExperience] = useState("");
   const [portfolioPaths, setPortfolioPaths] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    // Espera o modo dev/Clerk resolverem — senão o RPC dispara com o
-    // isDevMode inicial (falso) e cai no caminho Clerk sem sessão real.
+    // Espera o Clerk resolver a sessão antes do primeiro RPC.
     if (!isAuthReady) return;
 
     let mounted = true;
@@ -49,6 +44,7 @@ export default function ProviderSetupScreen() {
           serviceCategories?: ServiceCategory[];
           displayName?: string | null;
           municipality?: string | null;
+          phone?: string | null;
           bio?: string | null;
           yearsExperience?: number | null;
           portfolioUrls?: string[];
@@ -57,6 +53,7 @@ export default function ProviderSetupScreen() {
           if (profile.serviceCategories) setSelectedCategories(profile.serviceCategories);
           if (profile.displayName) setDisplayName(profile.displayName);
           if (profile.municipality) setMunicipality(profile.municipality);
+          if (profile.phone) setPhone(profile.phone);
           if (profile.bio) setBio(profile.bio);
           if (profile.yearsExperience != null) setYearsExperience(String(profile.yearsExperience));
           if (profile.portfolioUrls) setPortfolioPaths(profile.portfolioUrls);
@@ -71,10 +68,12 @@ export default function ProviderSetupScreen() {
     return () => {
       mounted = false;
     };
-  }, [callRpc, isAuthReady]);
+    // callRpc de propósito fora do array — ver a mesma nota em
+    // discovery/results.tsx e demands/[id].tsx.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthReady]);
 
   const toggleCategory = (cat: ServiceCategory) => {
-    if (loading) return;
     if (selectedCategories.includes(cat)) {
       setSelectedCategories(selectedCategories.filter((c) => c !== cat));
     } else {
@@ -152,37 +151,26 @@ export default function ProviderSetupScreen() {
 
       const trimmedCity = municipality.trim();
       if (trimmedCity && displayName.trim()) {
-        // updateProfile writes displayName + municipality together; reuse the
-        // reidrated displayName so we don't blank it out.
+        // updateProfile writes displayName + municipality + phone together;
+        // reuse the rehydrated displayName so we don't blank it out.
         await callRpc("identity.updateProfile", {
           displayName: displayName.trim(),
-          municipality: trimmedCity });
+          municipality: trimmedCity,
+          ...(phone.trim() ? { phone: phone.trim() } : {}) });
       }
 
+      // Rascunho progressivo: salva o que o usuário preencheu (bio, anos,
+      // fotos) mesmo incompleto — a busca não exige mais completude para
+      // listar o prestador (ver migration 20260816000000).
       const years = Number(yearsExperience);
-      const isComplete = isProviderSocialProfileComplete({
-        bio,
-        yearsExperience: Number.isFinite(years) ? years : null,
-        photoCount: portfolioPaths.length });
+      await callRpc("identity.updateProviderSocialProfile", {
+        bio: bio.trim(),
+        ...(yearsExperience.trim() && Number.isFinite(years)
+          ? { yearsExperience: Math.max(0, Math.min(60, Math.trunc(years))) }
+          : {}),
+        portfolioUrls: portfolioPaths });
 
-      if (isComplete) {
-        await callRpc("identity.updateProviderSocialProfile", {
-          bio: bio.trim(),
-          yearsExperience: Math.max(0, Math.min(60, Math.trunc(years))),
-          portfolioUrls: portfolioPaths });
-      }
-
-      // Only claim search visibility when the completeness gate actually
-      // passed — skipping updateProviderSocialProfile above leaves the
-      // provider hidden from search, and the message must not lie about that.
-      if (isComplete) {
-        showToast("Perfil atualizado! Agora você pode ser encontrado por contratantes.", "success");
-      } else {
-        showToast(
-          "Perfil salvo. Complete sua bio (mín. 40 caracteres), anos de experiência e ao menos 1 foto para aparecer nas buscas.",
-          "info"
-        );
-      }
+      showToast("Perfil salvo com sucesso!", "success");
       router.replace("/");
     } catch (error: any) {
       isSavingRef.current = false;
@@ -192,193 +180,134 @@ export default function ProviderSetupScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView className="flex-1 bg-background">
       <Stack.Screen options={{ title: "Configurar Perfil" }} />
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Suas Categorias</Text>
-        <Text style={styles.sectionSubtitle}>Selecione os serviços que você oferece</Text>
+      <View className="border-b border-border p-6">
+        <Text variant="h4" className="mb-1">
+          Suas Categorias
+        </Text>
+        <Text className="mb-5 text-muted-foreground">Selecione os serviços que você oferece</Text>
 
-        <View style={styles.grid}>
+        <View className="flex-row flex-wrap gap-2">
           {serviceCategories.map((cat) => {
             const isSelected = selectedCategories.includes(cat as ServiceCategory);
             return (
-              <Pressable
+              <Button
                 key={cat}
-                style={[styles.chip, isSelected && styles.chipSelected]}
+                size="sm"
+                variant={isSelected ? "default" : "outline"}
                 onPress={() => toggleCategory(cat as ServiceCategory)}
-                disabled={loading}
               >
-                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>{cat}</Text>
-              </Pressable>
+                <Text>{cat}</Text>
+              </Button>
             );
           })}
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Localização</Text>
-        <Text style={styles.sectionSubtitle}>
+      <View className="border-b border-border p-6">
+        <Text variant="h4" className="mb-1">
+          Seus dados
+        </Text>
+        <Text className="mb-5 text-muted-foreground">
+          Nome e telefone usados por contratantes para entrar em contato.
+        </Text>
+        <Input
+          value={displayName}
+          onChangeText={setDisplayName}
+          placeholder="Seu nome"
+          autoCapitalize="words"
+          className="mb-4"
+        />
+        <Input
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="Telefone / WhatsApp"
+          keyboardType="phone-pad"
+        />
+      </View>
+
+      <View className="border-b border-border p-6">
+        <Text variant="h4" className="mb-1">
+          Localização
+        </Text>
+        <Text className="mb-5 text-muted-foreground">
           Informe a cidade onde você atende os contratantes.
         </Text>
-        <TextInput
+        <Input
           value={municipality}
           onChangeText={setMunicipality}
           placeholder="Sua cidade"
           autoCapitalize="words"
-          style={styles.input}
         />
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Sobre você</Text>
-        <Text style={styles.sectionSubtitle}>
+      <View className="border-b border-border p-6">
+        <Text variant="h4" className="mb-1">
+          Sobre você
+        </Text>
+        <Text className="mb-5 text-muted-foreground">
           Conte sua experiência para contratantes conhecerem seu trabalho.
         </Text>
-        <TextInput
+        <Input
           value={bio}
           onChangeText={setBio}
           placeholder="Conte sua experiência (mínimo 40 caracteres)"
           multiline
           numberOfLines={4}
-          style={[styles.input, styles.textArea]}
+          className="h-24"
+          textAlignVertical="top"
         />
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Anos de experiência</Text>
-        <TextInput
+      <View className="border-b border-border p-6">
+        <Text variant="h4" className="mb-1">
+          Anos de experiência
+        </Text>
+        <Input
           value={yearsExperience}
           onChangeText={setYearsExperience}
           placeholder="Ex: 5"
           keyboardType="number-pad"
-          style={styles.input}
         />
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Portfólio</Text>
-        <Text style={styles.sectionSubtitle}>
+      <View className="border-b border-border p-6">
+        <Text variant="h4" className="mb-1">
+          Portfólio
+        </Text>
+        <Text className="mb-5 text-muted-foreground">
           Adicione fotos de trabalhos já realizados ({portfolioPaths.length}/6).
         </Text>
-        <View style={styles.grid}>
+        <View className="flex-row flex-wrap gap-2">
           {portfolioPaths.map((path) => (
             // portfolioPaths guarda o caminho de storage (não a URL pública ainda,
             // ver spec §Portfólio) — placeholder até existir endpoint de leitura assinado.
-            <View key={path} style={styles.photoThumb}>
-              <Text style={styles.photoThumbText}>Foto</Text>
+            <View key={path} className="h-16 w-16 items-center justify-center rounded-md border border-border bg-muted">
+              <Text className="text-xs text-muted-foreground">Foto</Text>
             </View>
           ))}
         </View>
-        <Pressable
-          style={[styles.addPhotoBtn, uploading && styles.addPhotoBtnDisabled]}
+        <Button
+          variant="outline"
+          className="mt-4"
           onPress={addPhoto}
           disabled={uploading}
         >
           {uploading ? (
             <ActivityIndicator color={theme.colors.primary} />
           ) : (
-            <Text style={styles.addPhotoBtnText}>Adicionar foto</Text>
+            <Text>Adicionar foto</Text>
           )}
-        </Pressable>
+        </Button>
       </View>
 
-      <View style={styles.footer} pointerEvents={loading ? "none" : "auto"}>
-        <Pressable style={styles.saveBtn} onPress={handleSave} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveBtnText}>Salvar Perfil</Text>
-          )}
-        </Pressable>
+      <View className="mb-10 p-6" pointerEvents={loading ? "none" : "auto"}>
+        <Button size="lg" onPress={handleSave} disabled={loading}>
+          {loading ? <ActivityIndicator color={theme.colors.surface} /> : <Text>Salvar Perfil</Text>}
+        </Button>
       </View>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff" },
-  section: {
-    padding: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0" },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#333",
-    marginBottom: 4 },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 20 },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10 },
-  chip: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    backgroundColor: "#fff" },
-  chipSelected: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary },
-  chipText: {
-    fontSize: 14,
-    color: "#444",
-    fontWeight: "600" },
-  chipTextSelected: {
-    color: "#fff" },
-  input: {
-    backgroundColor: "#f9f9f9",
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#eee",
-    fontSize: 16,
-    color: "#333" },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: "top" },
-  photoThumb: {
-    width: 72,
-    height: 72,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f0f0f0",
-    borderWidth: 1,
-    borderColor: "#eee" },
-  photoThumbText: {
-    fontSize: 12,
-    color: "#999",
-    fontWeight: "600" },
-  addPhotoBtn: {
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center" },
-  addPhotoBtnDisabled: {
-    opacity: 0.6 },
-  addPhotoBtnText: {
-    color: theme.colors.primary,
-    fontSize: 15,
-    fontWeight: "700" },
-  footer: {
-    padding: 24,
-    marginBottom: 40 },
-  saveBtn: {
-    backgroundColor: theme.colors.primary,
-    padding: 18,
-    borderRadius: 12,
-    alignItems: "center" },
-  saveBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "800" } });
