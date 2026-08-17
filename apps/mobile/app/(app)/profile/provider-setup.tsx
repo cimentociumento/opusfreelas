@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Image, ScrollView, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import { useRpc } from "../../../hooks/use-rpc";
@@ -131,6 +131,18 @@ export default function ProviderSetupScreen() {
     } finally {
       setUploading(false);
     }
+  };
+
+  const removePhoto = (index: number) => {
+    const path = portfolioPaths[index];
+    setPortfolioPaths((prev) => prev.filter((_, i) => i !== index));
+    setPortfolioPreviewUrls((prev) => prev.filter((_, i) => i !== index));
+    // Some da lista imediatamente; a exclusão no storage é best-effort — se
+    // falhar (rede rural), a foto só fica órfã no bucket, não volta a
+    // aparecer pro usuário nem é referenciada ao salvar o perfil.
+    callRpc("identity.deletePortfolioImage", { path }).catch((error) => {
+      console.error("[provider-setup.removePhoto] falha ao excluir do storage:", error);
+    });
   };
 
   const handleSave = async () => {
@@ -314,11 +326,20 @@ export default function ProviderSetupScreen() {
         </Text>
         <View className="flex-row flex-wrap gap-2">
           {portfolioPaths.map((path, index) => (
-            <Image
-              key={path}
-              source={{ uri: portfolioPreviewUrls[index] }}
-              className="h-16 w-16 rounded-md border border-border bg-muted"
-            />
+            <View key={path} className="h-16 w-16">
+              <Image
+                source={{ uri: portfolioPreviewUrls[index] }}
+                className="h-16 w-16 rounded-md border border-border bg-muted"
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Remover foto"
+                onPress={() => removePhoto(index)}
+                className="absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full bg-destructive"
+              >
+                <Text className="text-xs font-bold text-destructive-foreground">×</Text>
+              </Pressable>
+            </View>
           ))}
         </View>
         <Button

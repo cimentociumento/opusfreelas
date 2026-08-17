@@ -12,6 +12,8 @@ export {
   type UpdateProviderSocialProfileInput,
   uploadPortfolioImageSchema,
   type UploadPortfolioImageInput,
+  deletePortfolioImageSchema,
+  type DeletePortfolioImageInput,
 } from "./identity/schemas";
 
 export * from "./demands/schemas";

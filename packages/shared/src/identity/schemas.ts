@@ -35,3 +35,9 @@ export const uploadPortfolioImageSchema = z.object({
 });
 
 export type UploadPortfolioImageInput = z.infer<typeof uploadPortfolioImageSchema>;
+
+export const deletePortfolioImageSchema = z.object({
+  path: z.string().min(1),
+});
+
+export type DeletePortfolioImageInput = z.infer<typeof deletePortfolioImageSchema>;

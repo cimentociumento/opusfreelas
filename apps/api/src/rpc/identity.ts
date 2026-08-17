@@ -14,6 +14,7 @@ import {
   updateIdentityProfileSchema,
   updateProviderSocialProfileSchema,
   uploadPortfolioImageSchema,
+  deletePortfolioImageSchema,
 } from "@amauc/shared";
 
 const providerOnlyInputSchema = z.object({
@@ -231,6 +232,30 @@ export const identityHandlers = {
 
     const [publicUrl] = toPortfolioPublicUrls(supabase, [path]);
     return c.json({ path, publicUrl });
+  },
+
+  "identity.deletePortfolioImage": async (c: Context, input: unknown) => {
+    const auth = getAuthUser(c);
+    const parsed = deletePortfolioImageSchema.safeParse(input);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid input", details: parsed.error.flatten() }, 400);
+    }
+
+    // Mesmo gate anti-fraude do upload: só o dono do prefixo pode apagar.
+    const { path } = parsed.data;
+    const ownershipPrefix = `${auth.userId}/`;
+    if (!path.startsWith(ownershipPrefix)) {
+      return c.json({ error: "Invalid portfolio path" }, 400);
+    }
+
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.storage.from("portfolio").remove([path]);
+
+    if (error) {
+      return c.json({ error: "Delete failed", details: error.message }, 500);
+    }
+
+    return c.json({ deleted: true, path });
   },
 
   "identity.providerOnlyPing": async (c: Context, input: unknown) => {

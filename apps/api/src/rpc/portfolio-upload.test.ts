@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const authState = { userId: "user_test_123", sessionId: "sess_test" };
 const fromMock = vi.fn();
 const uploadMock = vi.fn();
+const removeMock = vi.fn();
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
@@ -11,6 +12,7 @@ vi.mock("@supabase/supabase-js", () => ({
     storage: {
       from: () => ({
         upload: uploadMock,
+        remove: removeMock,
         getPublicUrl: (path: string) => ({ data: { publicUrl: `https://example.supabase.co/storage/v1/object/public/portfolio/${path}` } }),
       }),
     },
@@ -94,6 +96,41 @@ describe("identity.uploadPortfolioImage", () => {
       imageBase64: "",
       contentType: "image/jpeg",
     });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("identity.deletePortfolioImage", () => {
+  beforeEach(() => {
+    process.env.CLERK_SECRET_KEY = "test_secret_key";
+    process.env.SUPABASE_URL = "https://example.supabase.co";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service_role_key";
+    vi.clearAllMocks();
+  });
+
+  it("deletes a path owned by the caller", async () => {
+    removeMock.mockResolvedValue({ data: {}, error: null });
+
+    const res = await post("identity.deletePortfolioImage", {
+      path: "user_test_123/1786860377368.png",
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.deleted).toBe(true);
+    expect(removeMock).toHaveBeenCalledWith(["user_test_123/1786860377368.png"]);
+  });
+
+  it("rejects a path not owned by the caller (400)", async () => {
+    const res = await post("identity.deletePortfolioImage", {
+      path: "someone_else/1786860377368.png",
+    });
+    expect(res.status).toBe(400);
+    expect(removeMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for a missing path", async () => {
+    const res = await post("identity.deletePortfolioImage", {});
     expect(res.status).toBe(400);
   });
 });
