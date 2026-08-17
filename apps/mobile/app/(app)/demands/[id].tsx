@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import {
   DemandResponse,
   demandUrgencySchema,
+  demandServiceTypeOptions,
   type DemandUrgency } from "@amauc/shared";
 import { useRpc } from "../../../hooks/use-rpc";
 import { useEffectiveUserId } from "../../../hooks/use-effective-user-id";
@@ -255,11 +256,19 @@ export default function DemandDetailsScreen() {
         {isEditing && editForm ? (
           <View className="gap-4">
             <Text className="text-sm font-bold">🛠️ Tipo de Serviço</Text>
-            <Input
-              value={editForm.serviceType}
-              onChangeText={(text) => setEditForm({ ...editForm, serviceType: text })}
-              editable={!isSaving}
-            />
+            <View className="flex-row flex-wrap gap-2">
+              {demandServiceTypeOptions.map((cat) => (
+                <Button
+                  key={cat}
+                  size="sm"
+                  variant={editForm.serviceType === cat ? "default" : "outline"}
+                  onPress={() => setEditForm({ ...editForm, serviceType: cat })}
+                  disabled={isSaving}
+                >
+                  <Text>{cat}</Text>
+                </Button>
+              ))}
+            </View>
 
             <Text className="text-sm font-bold">📝 Descrição do serviço</Text>
             <Input

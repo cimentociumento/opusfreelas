@@ -14,7 +14,7 @@ import {
   DemandUrgency,
   createDemandSchema,
   demandUrgencySchema,
-  serviceCategories } from "@amauc/shared";
+  demandServiceTypeOptions } from "@amauc/shared";
 import { Card } from "../../../components/Card";
 import { Button } from "../../../components/Button";
 import { useToast } from "../../../components/Toast";
@@ -103,7 +103,7 @@ export default function CreateDemandScreen() {
         <Card style={styles.formCard}>
           <Text style={styles.label}>🛠️ Tipo de Serviço</Text>
           <View style={styles.chipRow}>
-            {serviceCategories.map((cat) => (
+            {demandServiceTypeOptions.map((cat) => (
               <Button
                 key={cat}
                 title={cat}
