@@ -16,6 +16,8 @@ type DemandRow = {
   updated_at: string;
 };
 
+type ParsedCoordinates = { latitude: number; longitude: number };
+
 // PostgREST/Supabase retorna colunas geography(POINT) como hex EWKB
 // (ex.: "0101000020E6100000...") em vez de GeoJSON — só objetos com
 // `.coordinates` vêm de mocks de teste. Ponto 2D com SRID: 1 byte de
@@ -138,7 +140,10 @@ export function parseDemandLocation(location: unknown): ParsedCoordinates | null
   return null;
 }
 
-export function mapDemandRow(row: DemandRow): DemandResponse {
+export function mapDemandRow(
+  row: DemandRow,
+  contractor?: { display_name?: string | null; phone?: string | null }
+): DemandResponse {
   const fromColumns =
     row.latitude != null && row.longitude != null
       ? { latitude: row.latitude, longitude: row.longitude }
@@ -162,5 +167,11 @@ export function mapDemandRow(row: DemandRow): DemandResponse {
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    ...(contractor
+      ? {
+          contractorName: contractor.display_name ?? null,
+          contractorPhone: contractor.phone ?? null,
+        }
+      : {}),
   };
 }
