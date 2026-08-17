@@ -1,124 +1,67 @@
-
-import { StyleSheet, Text, View, ScrollView, Dimensions, Pressable } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { serviceCategories } from "@amauc/shared";
-import { Card } from "../../../components/Card";
-import { Button } from "../../../components/Button";
-import { theme } from "../../../components/theme";
+import { Card } from "../../../components/ui/card";
+import { Button } from "../../../components/ui/button";
+import { Text } from "../../../components/ui/text";
+
+const CATEGORY_ICON: Record<string, string> = {
+  "Roçada / Capina": "🌱",
+  "Diarista / Faxina": "🧹",
+  "Operador de Máquina Agrícola": "🚜",
+  "Serviços Gerais / Pequenos Reparos": "🔧",
+  "Pedreiro / Servente": "🧱",
+  Pintura: "🎨",
+  "Eletricista / Encanador": "⚡",
+  "Cuidado com Animais": "🐕",
+};
 
 export default function DiscoveryScreen() {
   const router = useRouter();
-  const screenWidth = Dimensions.get('window').width;
 
   const handleCategorySelect = (category: string) => {
     router.push({
       pathname: "/discovery/results",
-      params: { category }
+      params: { category },
     });
   };
 
-  const getCategoryIcon = (category: string) => {
-    const icons: { [key: string]: string } = {
-      "Roçada / Capina": "🌱",
-      "Diarista / Faxina": "🧹",
-      "Operador de Máquina Agrícola": "🚜",
-      "Serviços Gerais / Pequenos Reparos": "🔧",
-      "Pedreiro / Servente": "🧱",
-      "Pintura": "🎨",
-      "Eletricista / Encanador": "⚡",
-      "Cuidado com Animais": "🐕" };
-    return icons[category] || "📋";
-  };
-
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView className="flex-1 bg-background">
       <Stack.Screen options={{ title: "O que você precisa?" }} />
-      
-      <View style={styles.header}>
-        <Text style={styles.title}>Encontre profissionais</Text>
-        <Text style={styles.subtitle}>Escolha o serviço que você precisa</Text>
+
+      <View className="border-b border-border bg-card p-6">
+        <Text variant="h2" className="mb-2 text-primary">
+          Encontre profissionais
+        </Text>
+        <Text className="text-muted-foreground">Escolha o serviço que você precisa</Text>
       </View>
 
-      <View style={styles.grid}>
+      <View className="flex-row flex-wrap gap-4 p-4">
         {serviceCategories.map((item) => (
-          <Card 
-            key={item} 
-            variant="elevated"
-            style={styles.categoryCard}
-          >
-            <Pressable onPress={() => handleCategorySelect(item)}>
-              <View style={styles.iconContainer}>
-                <Text style={styles.iconText}>{getCategoryIcon(item)}</Text>
+          <Card key={item} className="w-[47%] min-h-36 items-center p-6">
+            <Pressable
+              className="w-full items-center"
+              onPress={() => handleCategorySelect(item)}
+              accessibilityRole="button"
+            >
+              <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <Text className="text-3xl">{CATEGORY_ICON[item] ?? "📋"}</Text>
               </View>
-              <Text style={styles.categoryText}>{item}</Text>
-              <Text style={styles.categorySubtext}>Ver profissionais</Text>
+              <Text className="mb-1 text-center text-sm font-bold">{item}</Text>
+              <Text className="text-center text-xs text-muted-foreground">Ver profissionais</Text>
             </Pressable>
           </Card>
         ))}
       </View>
 
-      <View style={styles.footer}>
-        <Card style={styles.allCard}>
-          <Button 
-            title="🔍 Ver todos os profissionais" 
-            variant="outline" 
-            size="lg"
-            onPress={() => handleCategorySelect("")}
-          />
+      <View className="mb-8 p-6">
+        <Card className="p-6">
+          <Button variant="outline" size="lg" onPress={() => handleCategorySelect("")}>
+            <Text>Ver todos os profissionais</Text>
+          </Button>
         </Card>
       </View>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background },
-  header: {
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border },
-  title: {
-    ...theme.typography.h2,
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.sm },
-  subtitle: {
-    ...theme.typography.body1,
-    color: theme.colors.textSecondary },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    padding: theme.spacing.md,
-    gap: theme.spacing.md },
-  categoryCard: {
-    width: "47%",
-    alignItems: "center",
-    padding: theme.spacing.lg,
-    minHeight: 140 },
-  iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: theme.spacing.md },
-  iconText: {
-    fontSize: 28 },
-  categoryText: {
-    ...theme.typography.body2,
-    color: theme.colors.text,
-    fontWeight: "700",
-    textAlign: "center",
-    marginBottom: theme.spacing.xs },
-  categorySubtext: {
-    ...theme.typography.caption,
-    color: theme.colors.textSecondary,
-    textAlign: "center" },
-  footer: {
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.xl },
-  allCard: {
-    padding: theme.spacing.lg } });

@@ -18,6 +18,7 @@ export const providerSearchSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   category: serviceCategorySchema.optional(),
+  municipality: z.string().trim().min(1).optional(),
   radius: z.number().int().min(1).max(200).default(50),
 });
 
@@ -41,6 +42,15 @@ export const providerResultSchema = z.object({
 });
 
 export type ProviderResult = z.infer<typeof providerResultSchema>;
+
+export const providerProfileSchema = providerResultSchema.omit({ distanceMeters: true });
+export type ProviderProfile = z.infer<typeof providerProfileSchema>;
+
+export const getProviderProfileSchema = z.object({
+  clerkUserId: z.string(),
+});
+
+export type GetProviderProfileInput = z.infer<typeof getProviderProfileSchema>;
 
 export const updateProviderProfileSchema = z.object({
   latitude: z.number().min(-90).max(90),
