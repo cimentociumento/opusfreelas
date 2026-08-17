@@ -8,7 +8,12 @@ vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
     from: fromMock,
     rpc: vi.fn(),
-    storage: { from: () => ({ upload: uploadMock }) },
+    storage: {
+      from: () => ({
+        upload: uploadMock,
+        getPublicUrl: (path: string) => ({ data: { publicUrl: `https://example.supabase.co/storage/v1/object/public/portfolio/${path}` } }),
+      }),
+    },
   }),
 }));
 

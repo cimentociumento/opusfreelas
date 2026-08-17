@@ -24,6 +24,11 @@ vi.mock("../middleware/clerk.js", () => ({
     c.set("authUser", { userId: authState.userId, sessionId: authState.sessionId });
     await next();
   },
+  // Sem número real de Clerk num teste unitário — getContactWithClerkFallback
+  // deve simplesmente não achar telefone, sem lançar.
+  getClerkClient: () => ({
+    users: { getUser: async () => ({ phoneNumbers: [], primaryPhoneNumberId: null }) },
+  }),
 }));
 
 import { app } from "../index.js";
@@ -150,13 +155,36 @@ describe("Identity RPC", () => {
     expect(res.status).toBe(403);
   });
 
-  it("updateProviderSocialProfile rejects a short bio with 400", async () => {
+  it("updateProviderSocialProfile accepts a short bio as a progressive draft save", async () => {
+    // Rascunho progressivo (migration 20260816000000): busca não exige mais
+    // perfil completo, então bio curta deve persistir em vez de ser rejeitada.
+    let call = 0;
+    fromMock.mockImplementation(() => {
+      call += 1;
+      if (call === 1) {
+        return chainable(() => Promise.resolve({ data: { is_provider: true }, error: null }));
+      }
+      return chainable(() =>
+        Promise.resolve({
+          data: {
+            clerk_user_id: authState.userId,
+            bio: "curto",
+            years_experience: 5,
+            portfolio_urls: ["user_test_123/p1.jpg"],
+          },
+          error: null,
+        })
+      );
+    });
+
     const res = await post("identity.updateProviderSocialProfile", {
       bio: "curto",
       yearsExperience: 5,
       portfolioUrls: ["user_test_123/p1.jpg"],
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.bio).toBe("curto");
   });
 
   it("updateProviderSocialProfile succeeds for a provider with self-owned portfolio paths", async () => {
@@ -202,6 +230,59 @@ describe("Identity RPC", () => {
       bio: "Trabalho com roçada e capina há vários anos na região de Concórdia.",
       yearsExperience: 5,
       portfolioUrls: ["someone_else/x.jpg"],
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("updateProviderProfile persists serviceCategories for a provider", async () => {
+    let call = 0;
+    fromMock.mockImplementation(() => {
+      call += 1;
+      if (call === 1) {
+        // is_provider check
+        return chainable(() => Promise.resolve({ data: { is_provider: true }, error: null }));
+      }
+      // update().eq().select().single()
+      return chainable(() =>
+        Promise.resolve({
+          data: {
+            clerk_user_id: authState.userId,
+            is_provider: true,
+            service_categories: ["Roçada / Capina", "Diarista / Faxina"],
+          },
+          error: null,
+        })
+      );
+    });
+
+    const res = await post("identity.updateProviderProfile", {
+      latitude: -27.23,
+      longitude: -52.03,
+      serviceCategories: ["Roçada / Capina", "Diarista / Faxina"],
+    });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.serviceCategories).toEqual(["Roçada / Capina", "Diarista / Faxina"]);
+  });
+
+  it("updateProviderProfile rejects when caller is not a provider (403)", async () => {
+    fromMock.mockImplementation(() =>
+      chainable(() => Promise.resolve({ data: { is_provider: false }, error: null }))
+    );
+
+    const res = await post("identity.updateProviderProfile", {
+      latitude: -27.23,
+      longitude: -52.03,
+      serviceCategories: ["Roçada / Capina"],
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("updateProviderProfile rejects a missing serviceCategories field with 400", async () => {
+    const res = await post("identity.updateProviderProfile", {
+      latitude: -27.23,
+      longitude: -52.03,
     });
     expect(res.status).toBe(400);
   });

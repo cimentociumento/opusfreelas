@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { ActivityIndicator, Image, ScrollView, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useRouter } from "expo-router";
 import { useRpc } from "../../../hooks/use-rpc";
@@ -31,6 +31,10 @@ export default function ProviderSetupScreen() {
   const [bio, setBio] = useState("");
   const [yearsExperience, setYearsExperience] = useState("");
   const [portfolioPaths, setPortfolioPaths] = useState<string[]>([]);
+  // Paralelo a portfolioPaths (mesma ordem/índice) — path é o que volta pro
+  // servidor ao salvar (gate anti-fraude exige "{clerk_user_id}/..."),
+  // previewUrl é só pra exibir a imagem de verdade em vez do placeholder.
+  const [portfolioPreviewUrls, setPortfolioPreviewUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
@@ -48,6 +52,7 @@ export default function ProviderSetupScreen() {
           bio?: string | null;
           yearsExperience?: number | null;
           portfolioUrls?: string[];
+          portfolioPublicUrls?: string[];
         }>("identity.getProfile");
         if (mounted && profile) {
           if (profile.serviceCategories) setSelectedCategories(profile.serviceCategories);
@@ -57,6 +62,7 @@ export default function ProviderSetupScreen() {
           if (profile.bio) setBio(profile.bio);
           if (profile.yearsExperience != null) setYearsExperience(String(profile.yearsExperience));
           if (profile.portfolioUrls) setPortfolioPaths(profile.portfolioUrls);
+          if (profile.portfolioPublicUrls) setPortfolioPreviewUrls(profile.portfolioPublicUrls);
         }
       } catch (error) {
         console.error("Failed to load profile", error);
@@ -110,10 +116,14 @@ export default function ProviderSetupScreen() {
       // o papel antes do upload para não bater no gate 403 da API (contratante que
       // chega pelo botão "Configurar Meu Perfil" ainda não tem is_provider=true).
       await ensureProviderRole();
-      const { path } = await callRpc<{ path: string }>("identity.uploadPortfolioImage", {
-        imageBase64: asset.base64,
-        contentType: resolvePortfolioContentType(asset.mimeType) });
+      const { path, publicUrl } = await callRpc<{ path: string; publicUrl: string }>(
+        "identity.uploadPortfolioImage",
+        {
+          imageBase64: asset.base64,
+          contentType: resolvePortfolioContentType(asset.mimeType) }
+      );
       setPortfolioPaths((prev) => [...prev, path]);
+      setPortfolioPreviewUrls((prev) => [...prev, publicUrl]);
     } catch (error: any) {
       // Rede rural intermitente: não trava o formulário; o gate de visibilidade
       // cobre portfólio vazio. Ver spec §Erros.
@@ -139,36 +149,58 @@ export default function ProviderSetupScreen() {
     isSavingRef.current = true;
     setLoading(true);
 
-    try {
-      await callRpc("identity.updateRoles", {
-        isContractor: true,
-        isProvider: true });
+    // Cada etapa é envolvida com o nome da chamada que a originou: se uma
+    // delas falhar no meio da sequência (ex.: categorias não persistem),
+    // o toast e o log já apontam qual RPC especificamente falhou, em vez de
+    // um "não foi possível salvar" genérico.
+    const step = async <T,>(name: string, fn: () => Promise<T>): Promise<T> => {
+      try {
+        return await fn();
+      } catch (error: any) {
+        console.error(`[provider-setup.handleSave] falha em ${name}:`, error);
+        throw new Error(`${name}: ${error?.message ?? "erro desconhecido"}`);
+      }
+    };
 
-      await callRpc("identity.updateProviderProfile", {
-        latitude: location.latitude,
-        longitude: location.longitude,
-        serviceCategories: selectedCategories });
+    try {
+      await step("identity.updateRoles", () =>
+        callRpc("identity.updateRoles", { isContractor: true, isProvider: true })
+      );
+
+      await step("identity.updateProviderProfile", () =>
+        callRpc("identity.updateProviderProfile", {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          serviceCategories: selectedCategories,
+        })
+      );
 
       const trimmedCity = municipality.trim();
       if (trimmedCity && displayName.trim()) {
         // updateProfile writes displayName + municipality + phone together;
         // reuse the rehydrated displayName so we don't blank it out.
-        await callRpc("identity.updateProfile", {
-          displayName: displayName.trim(),
-          municipality: trimmedCity,
-          ...(phone.trim() ? { phone: phone.trim() } : {}) });
+        await step("identity.updateProfile", () =>
+          callRpc("identity.updateProfile", {
+            displayName: displayName.trim(),
+            municipality: trimmedCity,
+            ...(phone.trim() ? { phone: phone.trim() } : {}),
+          })
+        );
       }
 
       // Rascunho progressivo: salva o que o usuário preencheu (bio, anos,
       // fotos) mesmo incompleto — a busca não exige mais completude para
       // listar o prestador (ver migration 20260816000000).
       const years = Number(yearsExperience);
-      await callRpc("identity.updateProviderSocialProfile", {
-        bio: bio.trim(),
-        ...(yearsExperience.trim() && Number.isFinite(years)
-          ? { yearsExperience: Math.max(0, Math.min(60, Math.trunc(years))) }
-          : {}),
-        portfolioUrls: portfolioPaths });
+      await step("identity.updateProviderSocialProfile", () =>
+        callRpc("identity.updateProviderSocialProfile", {
+          bio: bio.trim(),
+          ...(yearsExperience.trim() && Number.isFinite(years)
+            ? { yearsExperience: Math.max(0, Math.min(60, Math.trunc(years))) }
+            : {}),
+          portfolioUrls: portfolioPaths,
+        })
+      );
 
       showToast("Perfil salvo com sucesso!", "success");
       router.replace("/");
@@ -281,12 +313,12 @@ export default function ProviderSetupScreen() {
           Adicione fotos de trabalhos já realizados ({portfolioPaths.length}/6).
         </Text>
         <View className="flex-row flex-wrap gap-2">
-          {portfolioPaths.map((path) => (
-            // portfolioPaths guarda o caminho de storage (não a URL pública ainda,
-            // ver spec §Portfólio) — placeholder até existir endpoint de leitura assinado.
-            <View key={path} className="h-16 w-16 items-center justify-center rounded-md border border-border bg-muted">
-              <Text className="text-xs text-muted-foreground">Foto</Text>
-            </View>
+          {portfolioPaths.map((path, index) => (
+            <Image
+              key={path}
+              source={{ uri: portfolioPreviewUrls[index] }}
+              className="h-16 w-16 rounded-md border border-border bg-muted"
+            />
           ))}
         </View>
         <Button

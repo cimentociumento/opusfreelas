@@ -5,6 +5,8 @@ import { getSupabaseAdmin } from "../lib/supabase.js";
 import {
   getProfileByClerkUserId,
   upsertRoles,
+  toPortfolioPublicUrls,
+  getContactWithClerkFallback,
 } from "../lib/profile.js";
 import {
   profileRoleFlagsSchema,
@@ -22,6 +24,10 @@ export const identityHandlers = {
   "identity.getProfile": async (c: Context) => {
     const auth = getAuthUser(c);
     const profile = await getProfileByClerkUserId(auth.userId);
+    const supabase = getSupabaseAdmin();
+    // Prefill do próprio telefone verificado no Clerk, se ainda não tiver
+    // sido digitado manualmente (ver getContactWithClerkFallback).
+    const phone = profile.phone ?? (await getContactWithClerkFallback(supabase, auth.userId)).phone;
     return c.json({
       clerkUserId: profile.clerk_user_id,
       isContractor: profile.is_contractor,
@@ -32,7 +38,17 @@ export const identityHandlers = {
       municipality: profile.municipality ?? null,
       bio: profile.bio ?? null,
       yearsExperience: profile.years_experience ?? null,
+      // portfolioUrls continua sendo os paths brutos do storage — é o que
+      // volta pra identity.updateProviderSocialProfile, que valida que cada
+      // valor começa com "{clerk_user_id}/" (ver o gate anti-fraude abaixo).
+      // Uma URL pública não passaria nesse gate. portfolioPublicUrls é só
+      // pra exibição.
       portfolioUrls: profile.portfolio_urls ?? [],
+      portfolioPublicUrls: toPortfolioPublicUrls(supabase, profile.portfolio_urls ?? []),
+      phone: phone ?? null,
+      completedServicesCount: profile.completed_services_count ?? 0,
+      ratingAverage: profile.rating_average ?? 5.0,
+      ratingCount: profile.rating_count ?? 0,
     });
   },
 
@@ -66,11 +82,12 @@ export const identityHandlers = {
           clerk_user_id: auth.userId,
           display_name: parsed.data.displayName,
           municipality: parsed.data.municipality,
+          ...(parsed.data.phone !== undefined ? { phone: parsed.data.phone } : {}),
           updated_at: new Date().toISOString(),
         },
         { onConflict: "clerk_user_id" }
       )
-      .select("clerk_user_id, display_name, municipality")
+      .select("clerk_user_id, display_name, municipality, phone")
       .single();
 
     if (error) {
@@ -81,6 +98,7 @@ export const identityHandlers = {
       clerkUserId: data.clerk_user_id,
       displayName: data.display_name,
       municipality: data.municipality,
+      phone: data.phone ?? null,
     });
   },
 
@@ -211,7 +229,8 @@ export const identityHandlers = {
       return c.json({ error: "Upload failed", details: error.message }, 500);
     }
 
-    return c.json({ path });
+    const [publicUrl] = toPortfolioPublicUrls(supabase, [path]);
+    return c.json({ path, publicUrl });
   },
 
   "identity.providerOnlyPing": async (c: Context, input: unknown) => {

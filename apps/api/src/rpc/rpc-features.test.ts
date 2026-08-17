@@ -41,6 +41,11 @@ vi.mock("../middleware/clerk.js", () => ({
     c.set("authUser", { userId: authState.userId, sessionId: authState.sessionId });
     await next();
   },
+  // Sem número real de Clerk num teste unitário — getContactWithClerkFallback
+  // deve simplesmente não achar telefone, sem lançar.
+  getClerkClient: () => ({
+    users: { getUser: async () => ({ phoneNumbers: [], primaryPhoneNumberId: null }) },
+  }),
 }));
 
 import { app } from "../index.js";

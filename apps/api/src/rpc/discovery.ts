@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Context } from "hono";
 import { getSupabaseAdmin } from "../lib/supabase.js";
+import { toPortfolioPublicUrls, getContactWithClerkFallback } from "../lib/profile.js";
 import {
   providerSearchSchema,
   getProviderProfileSchema,
@@ -39,7 +40,7 @@ export const discoveryHandlers = {
       municipality: row.municipality ?? null,
       bio: row.bio ?? null,
       yearsExperience: row.years_experience ?? null,
-      portfolioUrls: row.portfolio_urls ?? [],
+      portfolioUrls: toPortfolioPublicUrls(supabase, row.portfolio_urls ?? []),
       serviceCategories: row.service_categories,
       phone: row.phone ?? null,
       completedServicesCount: row.completed_services_count ?? 0,
@@ -75,6 +76,8 @@ export const discoveryHandlers = {
       return c.json({ error: "Provider not found" }, 404);
     }
 
+    const phone = row.phone ?? (await getContactWithClerkFallback(supabase, row.clerk_user_id)).phone;
+
     const profile: ProviderProfile = {
       clerkUserId: row.clerk_user_id,
       isProvider: row.is_provider,
@@ -83,9 +86,9 @@ export const discoveryHandlers = {
       municipality: row.municipality ?? null,
       bio: row.bio ?? null,
       yearsExperience: row.years_experience ?? null,
-      portfolioUrls: row.portfolio_urls ?? [],
+      portfolioUrls: toPortfolioPublicUrls(supabase, row.portfolio_urls ?? []),
       serviceCategories: row.service_categories,
-      phone: row.phone ?? null,
+      phone: phone ?? null,
       completedServicesCount: row.completed_services_count ?? 0,
       ratingAverage: row.rating_average ?? 5.0,
       ratingCount: row.rating_count ?? 0,

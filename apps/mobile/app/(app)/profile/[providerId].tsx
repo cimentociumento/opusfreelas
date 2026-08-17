@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ActivityIndicator, Linking, ScrollView, View } from "react-native";
+import { ActivityIndicator, Image, Linking, ScrollView, View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ProviderProfile } from "@amauc/shared";
 import { useRpc } from "../../../hooks/use-rpc";
@@ -160,13 +160,8 @@ export default function ProviderProfileScreen() {
         <Card className="mx-4 mb-4 gap-3 p-4">
           <Text variant="h4">Portfólio</Text>
           <View className="flex-row flex-wrap gap-2">
-            {profile.portfolioUrls.map((path) => (
-              <View
-                key={path}
-                className="h-16 w-16 items-center justify-center rounded-md bg-muted"
-              >
-                <Text className="text-xs text-muted-foreground">Foto</Text>
-              </View>
+            {profile.portfolioUrls.map((url) => (
+              <Image key={url} source={{ uri: url }} className="h-16 w-16 rounded-md bg-muted" />
             ))}
           </View>
         </Card>

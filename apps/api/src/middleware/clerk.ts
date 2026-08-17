@@ -16,7 +16,7 @@ function getAuthorizedParties(): string[] {
     .filter(Boolean);
 }
 
-function getClerkClient() {
+export function getClerkClient() {
   const secretKey = process.env.CLERK_SECRET_KEY;
   if (!secretKey) {
     throw new Error("CLERK_SECRET_KEY is required");
