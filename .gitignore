@@ -1,8 +1,8 @@
 node_modules
 dist
-# Bundle gerado em build (pnpm --filter @amauc/api build:vercel-function) —
-# api/index.ts virou src/vercel-handler.ts; isto aqui é só o artefato.
-apps/api/api/
+# Build Output API v3 gerado por pnpm --filter @amauc/api build:vercel-function
+# (ver apps/api/scripts/build-vercel-output.mjs) — artefato, não fonte.
+apps/api/.vercel/
 .turbo
 *.log
 .env

@@ -7,7 +7,7 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "dev": "tsx watch --env-file=.env src/index.ts",
-    "build:vercel-function": "esbuild src/vercel-handler.ts --bundle --platform=node --format=esm --target=node22 --outfile=api/index.js --external:hono --external:hono/* --external:@hono/node-server --external:@hono/otel --external:@clerk/backend --external:@supabase/supabase-js --external:pino --external:zod --external:dotenv --external:dotenv/*"
+    "build:vercel-function": "node scripts/build-vercel-output.mjs"
   },
   "dependencies": {
     "@amauc/shared": "workspace:*",
@@ -16,13 +16,13 @@
     "@hono/otel": "^1.1.0",
     "@supabase/supabase-js": "^2.49.0",
     "dotenv": "^17.4.2",
+    "esbuild": "^0.24.2",
     "hono": "^4.12.0",
     "pino": "^9.7.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "esbuild": "^0.24.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
