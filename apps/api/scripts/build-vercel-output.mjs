@@ -18,21 +18,29 @@ mkdirSync(funcDir, { recursive: true });
 // as dependências npm reais: elas ficam soltas, sem essa deploy sendo dona
 // de um node_modules próprio.
 //
-// dotenv é a exceção: só é importado (dinamicamente, guardado por
-// !process.env.VERCEL — ver src/index.ts) fora da Vercel, então nunca
-// precisa estar no bundle de produção. Bundlar seu código CJS mesmo assim
-// quebrava em runtime ESM ("Dynamic require of 'fs' is not supported").
+// --format=cjs, não esm: dependências CJS com require() de builtins do Node
+// (pino → "node:os", entre outras) quebravam em runtime só na Vercel
+// ("Dynamic require of ... is not supported") quando bundladas junto de um
+// output ESM — o shim de interop que o esbuild gera pra isso não roda no
+// launcher Node customizado da Vercel, mesmo funcionando local. Saída CJS
+// não precisa desse shim: require() dentro de código CJS bundlado em CJS é
+// nativo, sem interop nenhum.
 execSync(
-  `esbuild src/vercel-handler.ts --bundle --platform=node --format=esm --target=node22 --outfile=${funcDir}/index.mjs --external:dotenv --external:dotenv/*`,
+  `esbuild src/vercel-handler.ts --bundle --platform=node --format=cjs --target=node22 --outfile=${funcDir}/index.js`,
   { stdio: "inherit" }
 );
+
+// Sem isso, o Node sobe a árvore de diretórios, acha apps/api/package.json
+// ("type": "module") e trata este index.js — que é CJS de verdade — como
+// ESM: sem erro, mas module.exports vira um no-op e os exports somem.
+writeFileSync(`${funcDir}/package.json`, JSON.stringify({ type: "commonjs" }, null, 2));
 
 writeFileSync(
   `${funcDir}/.vc-config.json`,
   JSON.stringify(
     {
       runtime: "nodejs22.x",
-      handler: "index.mjs",
+      handler: "index.js",
       launcherType: "Nodejs",
     },
     null,
