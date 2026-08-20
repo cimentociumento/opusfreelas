@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "mkdir -p public && echo '<!-- opusfreelas-api is a serverless function, not a static site — see api/index.ts -->' > public/index.html",
+  "buildCommand": "mkdir -p public && echo '<!-- opusfreelas-api is a serverless function, not a static site — see src/vercel-handler.ts -->' > public/index.html && pnpm run build:vercel-function",
   "outputDirectory": "public",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api" }

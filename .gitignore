@@ -1,5 +1,8 @@
 node_modules
 dist
+# Bundle gerado em build (pnpm --filter @amauc/api build:vercel-function) —
+# api/index.ts virou src/vercel-handler.ts; isto aqui é só o artefato.
+apps/api/api/
 .turbo
 *.log
 .env
