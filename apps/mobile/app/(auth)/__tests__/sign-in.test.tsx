@@ -30,11 +30,6 @@ jest.mock("@clerk/clerk-expo", () => ({
     typeof error === "object" && error !== null && "clerkError" in error,
 }));
 
-const mockCallRpc = jest.fn();
-jest.mock("../../../hooks/use-rpc", () => ({
-  useRpc: () => ({ callRpc: mockCallRpc }),
-}));
-
 import SignInScreen from "../sign-in";
 
 describe("SignInScreen", () => {
@@ -44,7 +39,6 @@ describe("SignInScreen", () => {
     mockSignIn = makeSignIn();
     mockSetActive.mockClear();
     mockReplace.mockClear();
-    mockCallRpc.mockReset();
   });
 
   it("signs in with username and password when credentials are valid", async () => {
@@ -52,7 +46,6 @@ describe("SignInScreen", () => {
       status: "complete",
       createdSessionId: "sess_123",
     });
-    mockCallRpc.mockResolvedValue({ displayName: "João Pedro" });
 
     const { getByPlaceholderText, getByText } = await render(<SignInScreen />);
 
@@ -84,24 +77,5 @@ describe("SignInScreen", () => {
     await fireEvent.press(getByText("Entrar"));
 
     expect(await findByText("Usuário não encontrado. Verifique o nome de usuário digitado.")).toBeTruthy();
-  });
-
-  describe("post-verification redirect", () => {
-    it("redirects to /onboarding when the profile has no displayName", async () => {
-      mockSignIn.create.mockResolvedValue({
-        status: "complete",
-        createdSessionId: "sess_123",
-      });
-      mockCallRpc.mockResolvedValue({ displayName: null });
-
-      const { getByPlaceholderText, getByText } = await render(<SignInScreen />);
-
-      await fireEvent.changeText(getByPlaceholderText("Digite seu nome de usuário"), "joaopedro");
-      await fireEvent.changeText(getByPlaceholderText("Digite sua senha"), "senha123");
-      await fireEvent.press(getByText("Entrar"));
-
-      await waitFor(() => expect(mockCallRpc).toHaveBeenCalledWith("identity.getProfile"));
-      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/onboarding"));
-    });
   });
 });

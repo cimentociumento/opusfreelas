@@ -40,7 +40,7 @@ export default function HomeScreen() {
               Bem-vindo ao Opus Freelas
             </Text>
             <Text className="text-center text-muted-foreground">
-              Encontre os melhores profissionais para serviços manuais e rurais na região da AMAUC
+              Encontre os melhores profissionais para serviços manuais e rurais na região
             </Text>
             <Button size="lg" className="w-full" onPress={() => router.push("/sign-in")}>
               <Text>Entrar</Text>

@@ -15,24 +15,24 @@ jest.mock("@clerk/clerk-expo", () => ({
   useAuth: () => ({ isLoaded: true, isSignedIn: true }),
 }));
 
-describe("AppGroupLayout onboarding guard", () => {
+describe("AppGroupLayout auth guard", () => {
   beforeEach(() => jest.resetModules());
 
-  it("renders the stack when onboarding is complete", async () => {
-    jest.doMock("../../../hooks/use-onboarding-status", () => ({
-      useOnboardingStatus: () => ({ needsOnboarding: false, isReady: true }),
+  it("renders the stack when signed in", async () => {
+    jest.doMock("@clerk/clerk-expo", () => ({
+      useAuth: () => ({ isLoaded: true, isSignedIn: true }),
     }));
     const AppGroupLayout = require("../_layout").default;
     const { getByText } = await render(<AppGroupLayout />);
     expect(getByText("stack")).toBeTruthy();
   });
 
-  it("redirects to /onboarding when the profile needs onboarding", async () => {
-    jest.doMock("../../../hooks/use-onboarding-status", () => ({
-      useOnboardingStatus: () => ({ needsOnboarding: true, isReady: true }),
+  it("redirects to /sign-in when signed out", async () => {
+    jest.doMock("@clerk/clerk-expo", () => ({
+      useAuth: () => ({ isLoaded: true, isSignedIn: false }),
     }));
     const AppGroupLayout = require("../_layout").default;
     const { getByText } = await render(<AppGroupLayout />);
-    expect(getByText("redirect:/onboarding")).toBeTruthy();
+    expect(getByText("redirect:/sign-in")).toBeTruthy();
   });
 });
