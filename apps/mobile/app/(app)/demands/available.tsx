@@ -82,7 +82,7 @@ export default function AvailableDemandsScreen() {
       <View className="flex-row items-start justify-between gap-2">
         <Text className="flex-1 text-lg font-semibold">{item.serviceType}</Text>
         <View className="rounded-full bg-muted px-2 py-1">
-          <Text className="text-xs text-muted-foreground">📍 {item.municipality}</Text>
+          <Text className="text-xs text-muted-foreground">{item.municipality}</Text>
         </View>
       </View>
 

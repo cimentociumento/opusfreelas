@@ -69,34 +69,34 @@ function SignedInContent() {
     <View className="gap-6 p-6">
       <Card className="items-center gap-2 p-6">
         <Text variant="h3" className="text-primary">
-          Olá, {user?.firstName || user?.username || "usuário"}! 👋
+          Olá, {user?.firstName || user?.username || "usuário"}!
         </Text>
         <Text className="text-muted-foreground">Encontre profissionais para seus serviços</Text>
       </Card>
 
       <View className="gap-3">
-        <Text className="ml-1 text-lg font-semibold">🏠 Sou Contratante</Text>
+        <Text className="ml-1 text-lg font-semibold">Sou Contratante</Text>
         <Card className="gap-3 p-6">
           <Button size="lg" onPress={() => router.push("/discovery")}>
-            <Text>🔍 Encontrar Profissionais</Text>
+            <Text>Encontrar Profissionais</Text>
           </Button>
           <Button variant="secondary" onPress={() => router.push("/demands/create")}>
-            <Text>📝 Publicar Demanda</Text>
+            <Text>Publicar Demanda</Text>
           </Button>
           <Button variant="outline" onPress={() => router.push("/demands")}>
-            <Text>📋 Minhas Demandas</Text>
+            <Text>Minhas Demandas</Text>
           </Button>
         </Card>
       </View>
 
       <View className="gap-3">
-        <Text className="ml-1 text-lg font-semibold">👨‍🔧 Sou Prestador</Text>
+        <Text className="ml-1 text-lg font-semibold">Sou Prestador</Text>
         <Card className="gap-3 p-6">
           <Button size="lg" onPress={() => router.push("/profile/provider-setup")}>
-            <Text>⚙️ Configurar Meu Perfil</Text>
+            <Text>Configurar Meu Perfil</Text>
           </Button>
           <Button variant="secondary" size="lg" onPress={() => router.push("/demands/available")}>
-            <Text>📋 Vagas na Região</Text>
+            <Text>Vagas na Região</Text>
           </Button>
         </Card>
       </View>

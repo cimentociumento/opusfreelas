@@ -5,17 +5,6 @@ import { Card } from "../../../components/ui/card";
 import { Button } from "../../../components/ui/button";
 import { Text } from "../../../components/ui/text";
 
-const CATEGORY_ICON: Record<string, string> = {
-  "Roçada / Capina": "🌱",
-  "Diarista / Faxina": "🧹",
-  "Operador de Máquina Agrícola": "🚜",
-  "Serviços Gerais / Pequenos Reparos": "🔧",
-  "Pedreiro / Servente": "🧱",
-  Pintura: "🎨",
-  "Eletricista / Encanador": "⚡",
-  "Cuidado com Animais": "🐕",
-};
-
 export default function DiscoveryScreen() {
   const router = useRouter();
 
@@ -45,9 +34,6 @@ export default function DiscoveryScreen() {
               onPress={() => handleCategorySelect(item)}
               accessibilityRole="button"
             >
-              <View className="mb-4 h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                <Text className="text-3xl">{CATEGORY_ICON[item] ?? "📋"}</Text>
-              </View>
               <Text className="mb-1 text-center text-sm font-bold">{item}</Text>
               <Text className="text-center text-xs text-muted-foreground">Ver profissionais</Text>
             </Pressable>

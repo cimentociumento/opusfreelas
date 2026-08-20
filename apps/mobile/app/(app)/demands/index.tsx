@@ -112,9 +112,9 @@ export default function MyDemandsScreen() {
         </Text>
 
         <View className="flex-row items-center justify-between">
-          <Text className="text-xs text-muted-foreground">📍 {item.municipality}</Text>
+          <Text className="text-xs text-muted-foreground">{item.municipality}</Text>
           <Text className="text-xs text-muted-foreground">
-            ⚡ {URGENCY_LABEL[item.urgency] ?? item.urgency}
+            {URGENCY_LABEL[item.urgency] ?? item.urgency}
           </Text>
         </View>
 
@@ -172,12 +172,12 @@ export default function MyDemandsScreen() {
           }
           ListEmptyComponent={
             <Card className="items-center gap-4 p-8">
-              <Text variant="h4">📝 Nenhuma demanda publicada</Text>
+              <Text variant="h4">Nenhuma demanda publicada</Text>
               <Text className="text-center text-muted-foreground">
                 Comece publicando sua primeira demanda para encontrar profissionais
               </Text>
               <Button size="lg" onPress={() => router.push("/demands/create")}>
-                <Text>🚀 Publicar Primeira Demanda</Text>
+                <Text>Publicar Primeira Demanda</Text>
               </Button>
             </Card>
           }

@@ -97,21 +97,19 @@ export default function DiscoveryResultsScreen() {
   const renderItem = ({ item }: { item: ProviderResult }) => (
     <Card className="mb-4 gap-3 p-4">
       <View className="flex-row items-center gap-3">
-        <View className="h-14 w-14 items-center justify-center rounded-full bg-muted">
-          <Text className="text-2xl">👤</Text>
-        </View>
+        <View className="h-14 w-14 items-center justify-center rounded-full bg-muted" />
         <View className="flex-1 gap-0.5">
           <Text className="text-lg font-semibold">{item.displayName || "Profissional"}</Text>
           <Text className="text-sm font-bold text-primary">
-            📍 A {(item.distanceMeters / 1000).toFixed(1)} km de você
+            A {(item.distanceMeters / 1000).toFixed(1)} km de você
           </Text>
           <Text className="text-xs text-muted-foreground">
-            ⭐ {item.ratingAverage.toFixed(1)} ({item.ratingCount} avaliações) · 🔨{" "}
+            {item.ratingAverage.toFixed(1)} ({item.ratingCount} avaliações) ·{" "}
             {item.completedServicesCount} serviços
           </Text>
           {item.yearsExperience != null && (
             <Text className="text-xs text-muted-foreground">
-              ⏱️ {item.yearsExperience} anos de experiência
+              {item.yearsExperience} anos de experiência
             </Text>
           )}
         </View>

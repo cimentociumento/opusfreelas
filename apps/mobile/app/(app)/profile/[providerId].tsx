@@ -113,27 +113,25 @@ export default function ProviderProfileScreen() {
       <Stack.Screen options={{ title: profile.displayName ?? "Perfil do prestador" }} />
 
       <Card className="m-4 items-center gap-2 p-6">
-        <View className="h-20 w-20 items-center justify-center rounded-full bg-muted">
-          <Text className="text-3xl">👤</Text>
-        </View>
+        <View className="h-20 w-20 items-center justify-center rounded-full bg-muted" />
         <Text variant="h3" className="text-center">
           {profile.displayName ?? "Profissional"}
         </Text>
         {profile.municipality ? (
-          <Text className="text-sm text-muted-foreground">📍 {profile.municipality}</Text>
+          <Text className="text-sm text-muted-foreground">{profile.municipality}</Text>
         ) : null}
 
         <View className="mt-2 flex-row gap-4">
           <Text className="text-sm text-muted-foreground">
-            ⭐ {profile.ratingAverage.toFixed(1)} ({profile.ratingCount})
+            {profile.ratingAverage.toFixed(1)} ({profile.ratingCount})
           </Text>
           <Text className="text-sm text-muted-foreground">
-            🔨 {profile.completedServicesCount} serviços
+            {profile.completedServicesCount} serviços
           </Text>
         </View>
         {profile.yearsExperience != null ? (
           <Text className="text-sm text-muted-foreground">
-            ⏱️ {profile.yearsExperience} anos de experiência
+            {profile.yearsExperience} anos de experiência
           </Text>
         ) : null}
       </Card>

@@ -255,7 +255,7 @@ export default function DemandDetailsScreen() {
 
         {isEditing && editForm ? (
           <View className="gap-4">
-            <Text className="text-sm font-bold">🛠️ Tipo de Serviço</Text>
+            <Text className="text-sm font-bold">Tipo de Serviço</Text>
             <View className="flex-row flex-wrap gap-2">
               {demandServiceTypeOptions.map((cat) => (
                 <Button
@@ -270,7 +270,7 @@ export default function DemandDetailsScreen() {
               ))}
             </View>
 
-            <Text className="text-sm font-bold">📝 Descrição do serviço</Text>
+            <Text className="text-sm font-bold">Descrição do serviço</Text>
             <Input
               className="h-20"
               textAlignVertical="top"
@@ -280,14 +280,14 @@ export default function DemandDetailsScreen() {
               editable={!isSaving}
             />
 
-            <Text className="text-sm font-bold">📍 Município</Text>
+            <Text className="text-sm font-bold">Município</Text>
             <Input
               value={editForm.municipality}
               onChangeText={(text) => setEditForm({ ...editForm, municipality: text })}
               editable={!isSaving}
             />
 
-            <Text className="text-sm font-bold">⚡ Nível de Urgência</Text>
+            <Text className="text-sm font-bold">Nível de Urgência</Text>
             <View className="flex-row flex-wrap gap-2">
               {demandUrgencySchema.options.map((u) => (
                 <Button
@@ -303,7 +303,7 @@ export default function DemandDetailsScreen() {
               ))}
             </View>
 
-            <Text className="text-sm font-bold">📏 Raio de Busca: {editForm.visibilityRadius}km</Text>
+            <Text className="text-sm font-bold">Raio de Busca: {editForm.visibilityRadius}km</Text>
             <View className="flex-row flex-wrap gap-2">
               {[5, 10, 20, 50].map((r) => (
                 <Button

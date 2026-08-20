@@ -101,7 +101,7 @@ export default function CreateDemandScreen() {
 
       <View style={styles.form}>
         <Card style={styles.formCard}>
-          <Text style={styles.label}>🛠️ Tipo de Serviço</Text>
+          <Text style={styles.label}>Tipo de Serviço</Text>
           <View style={styles.chipRow}>
             {demandServiceTypeOptions.map((cat) => (
               <Button
@@ -116,7 +116,7 @@ export default function CreateDemandScreen() {
             ))}
           </View>
 
-          <Text style={styles.label}>📝 Descrição do serviço</Text>
+          <Text style={styles.label}>Descrição do serviço</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Descreva detalhadamente o que você precisa..."
@@ -130,7 +130,7 @@ export default function CreateDemandScreen() {
             {form.description.length}/30 caracteres mínimos
           </Text>
 
-          <Text style={styles.label}>📍 Município</Text>
+          <Text style={styles.label}>Município</Text>
           <TextInput
             style={styles.input}
             value={form.municipality}
@@ -138,7 +138,7 @@ export default function CreateDemandScreen() {
             editable={!loading}
           />
 
-          <Text style={styles.label}>⚡ Nível de Urgência</Text>
+          <Text style={styles.label}>Nível de Urgência</Text>
           <View style={styles.chipRow}>
             {demandUrgencySchema.options.map((u) => (
               <Button
@@ -153,7 +153,7 @@ export default function CreateDemandScreen() {
             ))}
           </View>
 
-          <Text style={styles.label}>📏 Raio de Busca: {form.visibilityRadius}km</Text>
+          <Text style={styles.label}>Raio de Busca: {form.visibilityRadius}km</Text>
           <View style={styles.chipRow}>
             {[5, 10, 20, 50].map((r) => (
               <Button
@@ -171,7 +171,7 @@ export default function CreateDemandScreen() {
 
         <View style={styles.actionArea}>
           <Button
-            title={loading ? "Publicando…" : "🚀 Publicar Demanda"}
+            title={loading ? "Publicando…" : "Publicar Demanda"}
             variant="primary"
             size="lg"
             onPress={handleSubmit}
