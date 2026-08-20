@@ -12,23 +12,13 @@ const funcDir = `${outputDir}/functions/api.func`;
 rmSync(outputDir, { recursive: true, force: true });
 mkdirSync(funcDir, { recursive: true });
 
-const externals = [
-  "hono",
-  "hono/*",
-  "@hono/node-server",
-  "@hono/otel",
-  "@clerk/backend",
-  "@supabase/supabase-js",
-  "pino",
-  "zod",
-  "dotenv",
-  "dotenv/*",
-]
-  .map((pkg) => `--external:${pkg}`)
-  .join(" ");
-
+// Build Output API v3 não traça node_modules pra gente como o zero-config
+// da Vercel fazia — o que não estiver dentro deste arquivo simplesmente não
+// existe em runtime. Por isso tudo é bundlado (nenhum --external), incluindo
+// as dependências npm reais: elas ficam soltas, sem essa deploy sendo dona
+// de um node_modules próprio.
 execSync(
-  `esbuild src/vercel-handler.ts --bundle --platform=node --format=esm --target=node22 --outfile=${funcDir}/index.mjs ${externals}`,
+  `esbuild src/vercel-handler.ts --bundle --platform=node --format=esm --target=node22 --outfile=${funcDir}/index.mjs`,
   { stdio: "inherit" }
 );
 
