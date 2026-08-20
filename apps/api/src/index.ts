@@ -1,4 +1,11 @@
-import "dotenv/config.js";
+// dotenv só existe pra carregar .env em dev local — na Vercel as env vars já
+// vêm prontas em process.env, e o pacote (CJS, usa require("fs") internamente)
+// não bundla de forma segura pro formato ESM do handler serverless. Import
+// dinâmico + guarda evita executar (e evita até precisar resolver) esse
+// caminho em produção.
+if (!process.env.VERCEL) {
+  await import("dotenv/config.js");
+}
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";

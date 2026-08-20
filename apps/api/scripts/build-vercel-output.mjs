@@ -14,11 +14,16 @@ mkdirSync(funcDir, { recursive: true });
 
 // Build Output API v3 não traça node_modules pra gente como o zero-config
 // da Vercel fazia — o que não estiver dentro deste arquivo simplesmente não
-// existe em runtime. Por isso tudo é bundlado (nenhum --external), incluindo
+// existe em runtime. Por isso tudo é bundlado (sem --external), incluindo
 // as dependências npm reais: elas ficam soltas, sem essa deploy sendo dona
 // de um node_modules próprio.
+//
+// dotenv é a exceção: só é importado (dinamicamente, guardado por
+// !process.env.VERCEL — ver src/index.ts) fora da Vercel, então nunca
+// precisa estar no bundle de produção. Bundlar seu código CJS mesmo assim
+// quebrava em runtime ESM ("Dynamic require of 'fs' is not supported").
 execSync(
-  `esbuild src/vercel-handler.ts --bundle --platform=node --format=esm --target=node22 --outfile=${funcDir}/index.mjs`,
+  `esbuild src/vercel-handler.ts --bundle --platform=node --format=esm --target=node22 --outfile=${funcDir}/index.mjs --external:dotenv --external:dotenv/*`,
   { stdio: "inherit" }
 );
 
