@@ -74,7 +74,22 @@ describe("RPC Features (Demands & Discovery)", () => {
         created_at: new Date().toISOString(),
       };
 
-      fromMock.mockImplementation(() => {
+      const existingProfileCheck = chainable(() =>
+        Promise.resolve({
+          data: { clerk_user_id: authState.userId, is_contractor: true, is_provider: false },
+          error: null,
+        })
+      );
+
+      fromMock.mockImplementation((table: string) => {
+        if (table === "profiles") {
+          return {
+            select: existingProfileCheck.select,
+            eq: existingProfileCheck.eq,
+            maybeSingle: existingProfileCheck.maybeSingle,
+          };
+        }
+
         const duplicateCheck = chainable(() =>
           Promise.resolve({ data: null, error: null })
         );
@@ -122,6 +137,88 @@ describe("RPC Features (Demands & Discovery)", () => {
       expect(data.serviceType).toBe("Roçada / Capina");
     });
 
+    it("auto-provisions the profile row for a first-time contractor before creating a demand", async () => {
+      const mockDemand = {
+        id: "demand_2",
+        contractor_id: authState.userId,
+        service_type: "Roçada / Capina",
+        description: "Preciso de alguém para roçar um terreno de 500m2 no centro.",
+        municipality: "Concórdia",
+        location: { coordinates: [-52.03, -27.23] },
+        urgency: "media",
+        visibility_radius: 20,
+        status: "aberta",
+        created_at: new Date().toISOString(),
+      };
+
+      const missingProfileCheck = chainable(() => Promise.resolve({ data: null, error: null }));
+      const upsertMock = vi.fn(() => ({
+        select: vi.fn(() => ({
+          single: vi.fn(() =>
+            Promise.resolve({
+              data: { clerk_user_id: authState.userId, is_contractor: true, is_provider: false },
+              error: null,
+            })
+          ),
+        })),
+      }));
+
+      fromMock.mockImplementation((table: string) => {
+        if (table === "profiles") {
+          return {
+            select: missingProfileCheck.select,
+            eq: missingProfileCheck.eq,
+            maybeSingle: missingProfileCheck.maybeSingle,
+            upsert: upsertMock,
+          };
+        }
+
+        const duplicateCheck = chainable(() => Promise.resolve({ data: null, error: null }));
+        const insertChain = chainable(() => Promise.resolve({ data: mockDemand, error: null }));
+        return {
+          select: duplicateCheck.select,
+          eq: duplicateCheck.eq,
+          gte: duplicateCheck.gte,
+          order: duplicateCheck.order,
+          limit: duplicateCheck.limit,
+          maybeSingle: duplicateCheck.maybeSingle,
+          insert: vi.fn(() => ({
+            select: vi.fn(() => ({
+              single: insertChain.single,
+            })),
+          })),
+        };
+      });
+
+      const res = await app.request("/rpc", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          procedure: "demands.create",
+          input: {
+            serviceType: "Roçada / Capina",
+            description: "Preciso de alguém para roçar um terreno de 500m2 no centro.",
+            municipality: "Concórdia",
+            latitude: -27.23,
+            longitude: -52.03,
+            urgency: "media",
+            visibilityRadius: 20,
+          },
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.id).toBe("demand_2");
+      expect(upsertMock).toHaveBeenCalledWith(
+        expect.objectContaining({ clerk_user_id: authState.userId }),
+        expect.anything()
+      );
+    });
+
     it("returns 409 when duplicate demand is detected within 5 seconds", async () => {
       const recentDuplicate = {
         id: "demand_dup",
@@ -131,7 +228,22 @@ describe("RPC Features (Demands & Discovery)", () => {
         created_at: new Date().toISOString(),
       };
 
-      fromMock.mockImplementation(() => {
+      const existingProfileCheck = chainable(() =>
+        Promise.resolve({
+          data: { clerk_user_id: authState.userId, is_contractor: true, is_provider: false },
+          error: null,
+        })
+      );
+
+      fromMock.mockImplementation((table: string) => {
+        if (table === "profiles") {
+          return {
+            select: existingProfileCheck.select,
+            eq: existingProfileCheck.eq,
+            maybeSingle: existingProfileCheck.maybeSingle,
+          };
+        }
+
         const duplicateCheck = chainable(() =>
           Promise.resolve({ data: recentDuplicate, error: null })
         );

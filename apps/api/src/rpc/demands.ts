@@ -8,7 +8,7 @@ import {
 import type { Context } from "hono";
 import { getAuthUser } from "../middleware/clerk.js";
 import { getSupabaseAdmin } from "../lib/supabase.js";
-import { getContactWithClerkFallback } from "../lib/profile.js";
+import { getContactWithClerkFallback, ensureProfileInDb } from "../lib/profile.js";
 import { mapDemandRow } from "../lib/demands-mapper.js";
 
 async function getOwnedDemand(supabase: ReturnType<typeof getSupabaseAdmin>, id: string, userId: string) {
@@ -39,6 +39,12 @@ export const demandHandlers = {
 
     const { serviceType, description, municipality, latitude, longitude, urgency, visibilityRadius } = parsed.data;
     const supabase = getSupabaseAdmin();
+
+    // Sem onboarding obrigatório, este é o primeiro write de um contratante
+    // novo — garante a linha em profiles antes do insert, senão a FK
+    // demands_contractor_id_fkey rejeita (ver profiles vazio pra usuário
+    // recém-logado).
+    await ensureProfileInDb(auth.userId);
 
     const duplicateWindowStart = new Date(Date.now() - 5_000).toISOString();
     const { data: recentDuplicate } = await supabase
