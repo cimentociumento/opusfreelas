@@ -494,6 +494,85 @@ describe("RPC Features (Demands & Discovery)", () => {
       expect(data.error).toBe("Forbidden");
     });
 
+    it("hides a closed demand (and the contractor's phone) from a non-owner", async () => {
+      const demandId = "a5555555-5555-4555-8555-555555555555";
+      const closedDemand = {
+        id: demandId,
+        contractor_id: "other_user",
+        service_type: "Roçada / Capina",
+        description: "Descricao qualquer com pelo menos trinta caracteres.",
+        municipality: "Concórdia",
+        location: { coordinates: [-52.03, -27.23] },
+        urgency: "media",
+        visibility_radius: 20,
+        status: "encerrada",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      fromMock.mockImplementation((table: string) => {
+        if (table === "demands") {
+          const demandChain = chainable(() => Promise.resolve({ data: closedDemand, error: null }));
+          return { select: demandChain.select, eq: demandChain.eq, maybeSingle: demandChain.maybeSingle };
+        }
+        const profileChain = chainable(() => Promise.resolve({ data: null, error: null }));
+        return { select: profileChain.select, eq: profileChain.eq, maybeSingle: profileChain.maybeSingle };
+      });
+
+      const res = await app.request("/rpc", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ procedure: "demands.getById", input: { id: demandId } }),
+      });
+
+      expect(res.status).toBe(404);
+    });
+
+    it("still shows a closed demand to its own contractor", async () => {
+      const demandId = "a6666666-6666-4666-8666-666666666666";
+      const closedDemand = {
+        id: demandId,
+        contractor_id: authState.userId,
+        service_type: "Roçada / Capina",
+        description: "Descricao qualquer com pelo menos trinta caracteres.",
+        municipality: "Concórdia",
+        location: { coordinates: [-52.03, -27.23] },
+        urgency: "media",
+        visibility_radius: 20,
+        status: "concluida",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      fromMock.mockImplementation((table: string) => {
+        if (table === "demands") {
+          const demandChain = chainable(() => Promise.resolve({ data: closedDemand, error: null }));
+          return { select: demandChain.select, eq: demandChain.eq, maybeSingle: demandChain.maybeSingle };
+        }
+        const profileChain = chainable(() =>
+          Promise.resolve({ data: { display_name: "Maria Souza", phone: "49999998888" }, error: null })
+        );
+        return { select: profileChain.select, eq: profileChain.eq, maybeSingle: profileChain.maybeSingle };
+      });
+
+      const res = await app.request("/rpc", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ procedure: "demands.getById", input: { id: demandId } }),
+      });
+
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.id).toBe(demandId);
+      expect(data.contractorPhone).toBe("49999998888");
+    });
+
     it("deletes an open demand successfully", async () => {
       const demandId = "a1111111-1111-4111-8111-111111111111";
       const existing = {

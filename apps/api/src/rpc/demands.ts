@@ -11,6 +11,8 @@ import { getSupabaseAdmin } from "../lib/supabase.js";
 import { getContactWithClerkFallback, ensureProfileInDb } from "../lib/profile.js";
 import { mapDemandRow } from "../lib/demands-mapper.js";
 
+const CLOSED_DEMAND_STATUSES = new Set(["concluida", "cancelada", "encerrada"]);
+
 async function getOwnedDemand(supabase: ReturnType<typeof getSupabaseAdmin>, id: string, userId: string) {
   const { data: existing, error: fetchError } = await supabase
     .from("demands")
@@ -227,7 +229,7 @@ export const demandHandlers = {
   },
 
   "demands.getById": async (c: Context, input: unknown) => {
-    getAuthUser(c);
+    const auth = getAuthUser(c);
     const parsed = getDemandByIdSchema.safeParse(input);
     if (!parsed.success) {
       return c.json({ error: "Invalid input", details: parsed.error.flatten() }, 400);
@@ -244,7 +246,9 @@ export const demandHandlers = {
       console.error("[demands.getById] Database error:", error);
       return c.json({ error: "Database error", details: error.message }, 500);
     }
-    if (!demand) {
+    // Mesma regra da RLS "demands_select_all_active" (20260612000000_update_demand_status.sql):
+    // demanda encerrada/concluída/cancelada só é visível pro próprio dono.
+    if (!demand || (CLOSED_DEMAND_STATUSES.has(demand.status) && demand.contractor_id !== auth.userId)) {
       return c.json({ error: "Demand not found" }, 404);
     }
 
